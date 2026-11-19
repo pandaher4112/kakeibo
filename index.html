@@ -63,10 +63,12 @@ const mi=m=>{const p=m.split('-');return +p[0]*12+ +p[1]-1};
 const mf=i=>Math.floor(i/12)+'-'+String(i%12+1).padStart(2,'0');
 const ml=m=>m.slice(0,4)+'年'+(+m.slice(5))+'月';
 const uid=()=>Math.random().toString(36).slice(2,9);
+const DL=['当月','翌月','翌々月'];
+const accName=a=>{if(a&&a.startsWith('c:')){const cd=S.cards.find(x=>'c:'+x.id===a);return cd?cd.name+'・'+DL[cd.delay]+'払い':'削除済みカード'}return a};
 
 function seed(){
   const tx=[];
-  [['2027-04',35000],['2027-05',30000]].forEach(([m,wd])=>{
+  [['2026-12',35000,45000],['2027-01',30000,45000]].forEach(([m,wd,ln])=>{
     const a=(type,item,amt,acc,note,to,asExp)=>tx.push({id:uid(),m,type,item,amt,acc,note:note||'',to,asExp});
     a('inc','給与',230000,'三井住友銀行');
     a('exp','家賃',20000,'三井住友銀行','給与天引き');
@@ -75,35 +77,43 @@ function seed(){
     a('exp','交通費',10000,'三井住友銀行','ETC、電車等');
     a('exp','ガソリン代',10000,'三井住友銀行');
     a('exp','お小遣い',20000,'現金','洋服、雑貨、他');
-    a('xfer','ローン支払い',70000,'三井住友銀行','車、奨学金相当','家族',true);
+    a('xfer','ローン支払い',ln,'三井住友銀行','ローン返済','家族',true);
     a('xfer','貯蓄',20000,'三井住友銀行','横浜銀行に貯蓄','横浜銀行',true);
     a('xfer','引出し',wd,'三井住友銀行','現金化','現金',false);
   });
-  return{start:'2027-04',accs:['現金','郵便局','三井住友銀行','横浜銀行','AirPay','家族'],ext:'家族',
+  return{cards:[],start:'2026-12',accs:['現金','郵便局','三井住友銀行','横浜銀行','AirPay','家族'],ext:'家族',
     init:{},inc:['給与','賞与'],exp:['家賃','ローン支払い','水道光熱費','貯蓄','食費','交通費','ガソリン代','引出し','保険料','お小遣い'],
     xi:['ローン支払い','貯蓄','引出し'],
-    loans:[{id:uid(),name:'奨学金',amount:2400000,years:10,start:'2027-04',note:'専門学校分'},
-      {id:uid(),name:'車のローン',amount:2700000,years:5,start:'2026-12',note:'NDロードスター'},
-      {id:uid(),name:'車の残債',amount:300000,years:5,start:'2027-04',note:'NCロードスター分'}],tx};
+    loans:[
+      
+      ],tx:[]};
 }
 function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-let S=load();
+let S=load();S.cards=S.cards||[];
 let view='home';
 let cur=(()=>{const d=new Date();const t=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return mi(t)<mi(S.start)?S.start:t})();
 
 function calc(m){
   const bal={};S.accs.forEach(a=>bal[a]=+S.init[a]||0);
-  let inc=0,exp=0,sav=0;const cat={};
+  let inc=0,exp=0,sav=0;const cat={},due={};
   S.tx.filter(t=>t.m<=m).forEach(t=>{
     const c=t.m===m;
     const ex=()=>{if(!c)return;exp+=t.amt;cat[t.item]=(cat[t.item]||0)+t.amt;if(t.item==='貯蓄')sav+=t.amt};
     if(t.type==='inc'){bal[t.acc]+=t.amt;if(c)inc+=t.amt}
-    else if(t.type==='exp'){bal[t.acc]-=t.amt;ex()}
+    else if(t.type==='exp'){
+      if(t.acc.startsWith('c:')){const cd=S.cards.find(x=>'c:'+x.id===t.acc);
+        if(cd){const p=mi(t.m)+cd.delay;if(p<=mi(m)&&cd.acc&&bal[cd.acc]!=null)bal[cd.acc]-=t.amt;if(p===mi(m))due[cd.id]=(due[cd.id]||0)+t.amt}}
+      else bal[t.acc]-=t.amt;
+      ex()}
     else{bal[t.acc]-=t.amt;bal[t.to]+=t.amt;if(t.asExp)ex()}
   });
+  S.loans.forEach(l=>{const n=l.years*12,mo=l.amount/n,s=mi(l.start),e=mi(m);
+    const k=Math.max(0,Math.min(n,e-s+1));
+    if(l.acc&&bal[l.acc]!=null)bal[l.acc]-=mo*k;
+    if(e>=s&&e<s+n){exp+=mo;const key='ローン・'+l.name;cat[key]=(cat[key]||0)+mo}});
   const usable=S.accs.filter(a=>a!==S.ext).reduce((s,a)=>s+bal[a],0)-sav;
-  return{bal,inc,exp,sav,cat,usable};
+  return{bal,inc,exp,sav,cat,usable,due};
 }
 function loanInfo(l,m){
   const n=l.years*12,mo=l.amount/n,i=mi(m)-mi(l.start);
@@ -119,13 +129,15 @@ function home(){
   const paid=S.tx.filter(t=>t.m===cur&&t.item==='ローン支払い').reduce((s,t)=>s+t.amt,0);
   const cats=Object.entries(c.cat).sort((a,b)=>b[1]-a[1]);
   const mx=cats.length?cats[0][1]:1;
+  const dues=S.cards.filter(cd=>c.due[cd.id]),dt=dues.reduce((s,cd)=>s+c.due[cd.id],0);
+  const cardHtml=S.cards.length?`<div class="card"><h4>カード支払い（${ml(cur)}の引落分）</h4>`+(dues.length?dues.map(cd=>`<div class="row"><span>${esc(cd.name)}<small>${DL[cd.delay]}払い${cd.acc?'・引落 '+esc(cd.acc):''}</small></span><b>${yen(c.due[cd.id])}</b></div>`).join('')+`<div class="row"><span>合計</span><b>${yen(dt)}</b></div>`:'<span class="note">今月の引落はありません</span>')+'</div>':'';
   return monthNav()+`<div class="hero"><small>今月の残金</small><b>${yen(c.usable)}</b><small>口座残高の合計 − 今月の貯蓄</small></div>
-  <div class="card"><h4>口座残高（月末）</h4><div class="grid">${S.accs.map(a=>`<div><small>${esc(a)}</small><b class="${c.bal[a]<0?'neg':''}">${yen(c.bal[a])}</b></div>`).join('')}</div></div>
+  <div class="card"><h4>口座残高（月末）</h4><div class="grid">${S.accs.filter(a=>a!==S.ext).map(a=>`<div><small>${esc(a)}</small><b class="${c.bal[a]<0?'neg':''}">${yen(c.bal[a])}</b></div>`).join('')}</div></div>
   <div class="card"><h4>今月の収支</h4>
   <div class="row"><span>収入</span><b class="pos">${yen(c.inc)}</b></div>
   <div class="row"><span>支出</span><b class="neg">${yen(c.exp)}</b></div>
   <div class="row"><span>収支</span><b class="${c.inc-c.exp<0?'neg':'pos'}">${yen(c.inc-c.exp)}</b></div></div>
-  <div class="card"><h4>ローン</h4><div class="row"><span>今月の返済予定<small>登録済み ${yen(paid)}</small></span><b>${yen(plan)}</b></div></div>
+  ${cardHtml}<div class="card"><h4>ローン</h4><div class="row"><span>今月の返済額<small>支出に自動で計上されます</small></span><b>${yen(plan)}</b></div></div>
   <div class="card"><h4>支出の内訳</h4>${cats.length?cats.map(([k,v])=>`<div style="margin-bottom:8px"><div class="row" style="padding:0;border:0"><span>${esc(k)}</span><span>${yen(v)}</span></div><div class="bar"><i style="width:${v/mx*100}%"></i></div></div>`).join(''):'<span class="note">データがありません</span>'}</div>`;
 }
 function list(){
@@ -139,7 +151,7 @@ function list(){
   grp.forEach(([k,lb])=>{
     const r=t.filter(x=>x.type===k);if(!r.length)return;
     h+=`<div class="card"><h4>${lb}　${yen(r.reduce((s,x)=>s+x.amt,0))}</h4>`+r.map(x=>
-      `<div class="row" data-e="${x.id}"><span>${esc(x.item)}<small>${k==='xfer'?esc(x.acc)+' → '+esc(x.to):esc(x.acc)}${x.note?'　'+esc(x.note):''}</small></span><b class="${k==='inc'?'pos':''}">${yen(x.amt)}</b></div>`).join('')+'</div>';
+      `<div class="row" data-e="${x.id}"><span>${esc(x.item)}<small>${k==='xfer'?esc(x.acc)+' → '+esc(x.to):esc(accName(x.acc))}${x.note?'　'+esc(x.note):''}</small></span><b class="${k==='inc'?'pos':''}">${yen(x.amt)}</b></div>`).join('')+'</div>';
   });
   return h;
 }
@@ -151,17 +163,18 @@ function loans(){
   <div class="bar"><i style="width:${q.paid/q.n*100}%"></i></div>
   <div class="row" style="border:0;padding:6px 0 0"><span class="note">${q.paid}／${q.n}回</span><span>残り ${yen(q.rest)}</span></div></div>`}).join('')+`<button class="btn" id="addloan">＋ ローンを追加</button>`;
 }
+function cardSet(){return`<div class="card"><h4>カード</h4>`+(S.cards.length?S.cards.map(cd=>`<div class="row" data-c="${cd.id}"><span>${esc(cd.name)}<small>${DL[cd.delay]}払い${cd.acc?'・引落 '+esc(cd.acc):''}</small></span><span class="note">編集</span></div>`).join(''):'<p class="note">カードはまだありません</p>')+`<button class="btn" id="addcard" style="margin-top:8px">＋ カードを追加</button><p class="note">カードで支払った支出は使用月の支出として集計します。引落口座を設定すると、支払い月にその口座の残高から引かれます。</p></div>`}
 function settings(){
   return`<div class="card"><h4>口座名と開始残高（${ml(S.start)}の前）</h4><div class="ar note"><span style="flex:1">口座名</span><span style="flex:1">開始残高</span></div>`+S.accs.map((a,i)=>`<div class="ar"><input data-an="${i}" value="${esc(a)}"><input type="number" inputmode="numeric" data-init="${i}" value="${+S.init[a]||0}"></div>`).join('')+`<p class="note">名前を変えると、過去の明細も新しい名前に切り替わります。「${esc(S.ext)}」は残金の合計に含まれない口座です。</p></div>
-  <div class="card"><h4>項目（カンマ区切り）</h4>
+  ${cardSet()}<div class="card"><h4>項目（カンマ区切り）</h4>
   <label class="fl">収入<input id="s_inc" value="${esc(S.inc.join(','))}"></label>
   <label class="fl">支出<input id="s_exp" value="${esc(S.exp.join(','))}"></label>
   <label class="fl">口座振替<input id="s_xi" value="${esc(S.xi.join(','))}"></label>
   <label class="fl">開始月<input type="month" id="s_start" value="${S.start}"></label>
-  <button class="btn" id="s_save">設定を保存</button></div>
+  <button class="btn" id="s_save">設定を保存</button><button class="btn" id="shift">明細を開始月に合わせてずらす</button><p class="note">いちばん古い明細の月が開始月になるよう、すべての明細の月をまとめて移動します（ローンの開始月は変わりません）。先に開始月を保存してから押してください。</p></div>
   <div class="card"><h4>バックアップ</h4><p class="note">データはこの端末のSafariに保存されます。機種変更や履歴削除に備え、定期的にコピーして「メモ」等に保管してください。</p>
   <textarea id="bk"></textarea><div class="btns"><button id="bk_copy">コピー</button><button id="bk_load" class="pri">貼り付けて復元</button></div>
-  <button class="btn danger" id="reset" style="margin-top:10px">初期データに戻す</button></div>`;
+  <button class="btn danger" id="clr" style="margin-top:10px">すべての明細・ローンを削除</button><button class="btn danger" id="reset">初期データに戻す</button></div>`;
 }
 function render(){
   const v={home,list,loans,settings}[view]();
@@ -178,16 +191,16 @@ function openForm(title,fieldsFn,v,onSave,onDel){
     $('#sheet').innerHTML=`<h3>${title}</h3>`+fs.map(f=>{
       const id='f_'+f.k;
       if(f.t==='seg')return`<div class="seg">${f.o.map(o=>`<button data-k="${f.k}" data-v="${o[0]}" class="${v[f.k]===o[0]?'on':''}">${o[1]}</button>`).join('')}</div>`;
-      if(f.t==='sel')return`<label class="fl">${f.l}<select id="${id}">${f.o.map(o=>`<option ${o===v[f.k]?'selected':''}>${esc(o)}</option>`).join('')}</select></label>`;
+      if(f.t==='sel')return`<label class="fl">${f.l}<select id="${id}">${f.o.map(o=>{const a=Array.isArray(o)?o:[o,o];return`<option value="${esc(a[0])}" ${String(a[0])===String(v[f.k])?'selected':''}>${esc(a[1])}</option>`}).join('')}</select></label>`;
       if(f.t==='chk')return`<label class="fl c"><input type="checkbox" id="${id}" ${v[f.k]?'checked':''}>${f.l}</label>`;
       return`<label class="fl">${f.l}<input id="${id}" type="${f.t}" ${f.t==='number'?'inputmode="numeric"':''} value="${esc(v[f.k]==null?'':v[f.k])}"></label>`;
     }).join('')+`<div class="btns">${onDel?'<button id="f_del" class="danger">削除</button>':''}<button id="f_cancel">閉じる</button><button id="f_ok" class="pri">保存</button></div>`;
-    const collect=()=>fs.forEach(f=>{const e=$('#f_'+f.k);if(e)v[f.k]=f.t==='chk'?e.checked:f.t==='number'?(+e.value||0):e.value});
+    const collect=()=>fs.forEach(f=>{const e=$('#f_'+f.k);if(e)v[f.k]=f.t==='chk'?e.checked:f.t==='number'?(e.value===''?'':+e.value):e.value});
     $('#sheet').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{collect();v[b.dataset.k]=b.dataset.v;if(v.onSeg)v.onSeg(v);draw()});
     const it=$('#f_item');if(it&&v.type==='xfer')it.onchange=()=>{const c=$('#f_asExp');if(c)c.checked=it.value!=='引出し'};
     $('#f_cancel').onclick=close;
     $('#f_ok').onclick=()=>{collect();if(onSave(v)!==false){save();close();render()}};
-    if(onDel)$('#f_del').onclick=e=>arm(e.target,'もう一度押して削除',()=>{onDel();save();close();render()});
+    if(onDel)$('#f_del').onclick=e=>arm(e.target,'もう一度押して削除',()=>{if(onDel()===false)return;save();close();render()});
   };
   draw();$('#ov').classList.add('show');
 }
@@ -201,7 +214,7 @@ function entryFields(v){
   const lst=v.type==='inc'?S.inc:v.type==='exp'?S.exp:S.xi;
   if(!lst.includes(v.item))v.item=lst[0];
   f.push({k:'item',t:'sel',l:'項目',o:lst},{k:'amt',t:'number',l:'金額'},
-    {k:'acc',t:'sel',l:v.type==='xfer'?'元の口座':'金融機関',o:S.accs});
+    {k:'acc',t:'sel',l:v.type==='xfer'?'元の口座':v.type==='exp'?'支払い方法（口座・カード）':'入金口座',o:v.type==='exp'?[...S.accs,...S.cards.map(c=>['c:'+c.id,c.name+'（カード）'])]:S.accs});
   if(v.type==='xfer')f.push({k:'to',t:'sel',l:'先の口座',o:S.accs},{k:'asExp',t:'chk',l:'支出として集計する'});
   f.push({k:'note',t:'text',l:'備考'});
   return f;
@@ -218,14 +231,23 @@ function editEntry(id){
 }
 function editLoan(id){
   const ex=S.loans.find(l=>l.id===id);
-  const v=ex?{...ex}:{name:'',amount:'',years:5,start:cur,note:''};
-  openForm(ex?'ローンを編集':'ローンを追加',()=>[{k:'name',t:'text',l:'用途'},{k:'amount',t:'number',l:'金額'},{k:'years',t:'number',l:'期間（年）'},{k:'start',t:'month',l:'開始月'},{k:'note',t:'text',l:'備考'}],v,v=>{
+  const v=ex?{...ex}:{name:'',amount:'',years:5,start:cur,acc:'',note:''};
+  openForm(ex?'ローンを編集':'ローンを追加',()=>[{k:'name',t:'text',l:'用途'},{k:'amount',t:'number',l:'金額'},{k:'years',t:'number',l:'期間（年）'},{k:'start',t:'month',l:'開始月'},{k:'acc',t:'sel',l:'引落口座（なしなら残高に反映しない）',o:[['','なし'],...S.accs.filter(a=>a!==S.ext)]},{k:'note',t:'text',l:'備考'}],v,v=>{
     if(!v.name||!v.amount||!v.years){toast('用途・金額・期間を入力してください');return false}
-    const o={id:ex?ex.id:uid(),name:v.name,amount:+v.amount,years:+v.years,start:v.start,note:v.note};
+    const o={id:ex?ex.id:uid(),name:v.name,amount:+v.amount,years:+v.years,start:v.start,acc:v.acc||'',note:v.note};
     if(ex)Object.assign(ex,o);else S.loans.push(o);
   },ex?()=>{S.loans=S.loans.filter(l=>l.id!==id)}:null);
 }
 
+function editCard(id){
+  const ex=S.cards.find(c=>c.id===id);
+  const v=ex?{...ex}:{name:'',delay:1,acc:''};
+  openForm(ex?'カードを編集':'カードを追加',()=>[{k:'name',t:'text',l:'カード名'},{k:'delay',t:'sel',l:'支払い月',o:[['0','当月'],['1','翌月'],['2','翌々月']]},{k:'acc',t:'sel',l:'引落口座（なしなら残高に反映しない）',o:[['','なし'],...S.accs.filter(a=>a!==S.ext)]}],v,v=>{
+    const nm=(v.name||'').trim();if(!nm){toast('カード名を入力してください');return false}
+    const o={id:ex?ex.id:uid(),name:nm,delay:+v.delay,acc:v.acc};
+    if(ex)Object.assign(ex,o);else S.cards.push(o);
+  },ex?()=>{if(S.tx.some(t=>t.acc==='c:'+id)){toast('使用中のカードは削除できません');return false}S.cards=S.cards.filter(c=>c.id!==id)}:null);
+}
 /* ---------- events ---------- */
 document.addEventListener('click',e=>{
   const g=s=>e.target.closest(s);
@@ -235,6 +257,8 @@ document.addEventListener('click',e=>{
   else if(g('#fab'))editEntry();
   else if(el=g('[data-e]'))editEntry(el.dataset.e);
   else if(el=g('[data-l]'))editLoan(el.dataset.l);
+  else if(el=g('[data-c]'))editCard(el.dataset.c);
+  else if(g('#addcard'))editCard();
   else if(g('#addloan'))editLoan();
   else if(g('#cp')){const pv=mf(mi(cur)-1);S.tx.filter(x=>x.m===pv).forEach(x=>S.tx.push({...x,id:uid(),m:cur}));save();render()}
   else if(g('#s_save')){
@@ -244,17 +268,20 @@ document.addEventListener('click',e=>{
     S.accs.forEach((o,i)=>{mp[o]=names[i];init[names[i]]=+document.querySelector('[data-init="'+i+'"]').value||0});
     S.tx.forEach(t=>{t.acc=mp[t.acc]||t.acc;if(t.to)t.to=mp[t.to]||t.to});
     if(mp[S.ext])S.ext=mp[S.ext];
+    S.cards.forEach(c=>{if(c.acc)c.acc=mp[c.acc]||c.acc});S.loans.forEach(l=>{if(l.acc)l.acc=mp[l.acc]||l.acc});
     S.accs=names;S.init=init;
     const sp=id=>$(id).value.split(',').map(s=>s.trim()).filter(Boolean);
-    S.inc=sp('#s_inc');S.exp=sp('#s_exp');S.xi=sp('#s_xi');if($('#s_start').value)S.start=$('#s_start').value;
+    S.inc=sp('#s_inc');S.exp=sp('#s_exp');S.xi=sp('#s_xi');const ns=$('#s_start').value;if(ns&&ns!==S.start){S.start=ns;cur=ns}
     
     save();render();toast('保存しました');
   }
+  else if(g('#shift')){const ms=S.tx.map(t=>mi(t.m));if(!ms.length){toast('明細がありません');return}const d=mi(S.start)-Math.min(...ms);if(!d){toast('すでに開始月からです');return}arm(g('#shift'),'もう一度押すと'+(d>0?d+'か月後ろへ':-d+'か月前へ')+'移動',()=>{S.tx.forEach(t=>t.m=mf(mi(t.m)+d));cur=S.start;save();render();toast('移動しました')})}
   else if(g('#bk_copy')){const t=$('#bk');t.select();try{navigator.clipboard.writeText(t.value)}catch(x){document.execCommand('copy')}toast('コピーしました')}
   else if(g('#bk_load')){
     let d;try{d=JSON.parse($('#bk').value);if(!d.tx||!d.accs)throw 0}catch(x){toast('データの形式が正しくありません');d=null}
-    if(d)arm(g('#bk_load'),'もう一度押して置換',()=>{S=d;save();render();toast('復元しました')})
+    if(d)arm(g('#bk_load'),'もう一度押して置換',()=>{S=d;S.cards=S.cards||[];save();render();toast('復元しました')})
   }
+  else if(g('#clr')){arm(g('#clr'),'もう一度押すと全データを削除',()=>{S.tx=[];S.loans=[];save();render();toast('削除しました')})}
   else if(g('#reset')){arm(g('#reset'),'もう一度押すと初期化します',()=>{S=seed();save();render();toast('初期化しました')})}
 });
 render();

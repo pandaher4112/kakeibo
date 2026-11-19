@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="家計簿ソラ">
+<title>家計簿ソラ</title>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--tx:#1c2430;--sub:#6b7686;--ac:#2f6fed;--line:#e3e7ee;--neg:#d6453d;--pos:#1f9d62;--hero:#2f6fed;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141b;--card:#1a212c;--tx:#e8edf5;--sub:#93a0b3;--ac:#6c9bff;--line:#2a3342;--neg:#ff7a70;--pos:#4cd694;--hero:#2a4fa8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10141b;--card:#1a212c;--tx:#e8edf5;--sub:#93a0b3;--ac:#6c9bff;--line:#2a3342;--neg:#ff7a70;--pos:#4cd694;--hero:#2a4fa8;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;padding:8px 14px 150px;max-width:560px;margin:0 auto}
+button,input,select{font:inherit;color:inherit}
+.mn{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px}
+.mn b{font-size:18px}.mn button{background:var(--card);border:1px solid var(--line);border-radius:10px;width:44px;height:38px}
+.hero{background:var(--hero);color:#fff;border-radius:18px;padding:16px 18px;margin-bottom:12px}
+.hero small{opacity:.85;display:block}.hero b{font-size:34px;letter-spacing:.5px}
+.card{background:var(--card);border-radius:16px;padding:12px 14px;margin-bottom:12px;border:1px solid var(--line)}
+.card h4{margin:0 0 8px;font-size:14px;color:var(--sub);font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid div{background:var(--bg);border-radius:12px;padding:8px 10px}.grid small{color:var(--sub);display:block;font-size:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);gap:10px}
+.row:first-of-type{border-top:0}.row small{color:var(--sub);display:block}
+.neg{color:var(--neg)}.pos{color:var(--pos)}
+.bar{height:8px;border-radius:4px;background:var(--bg);overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:var(--ac)}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+.tabs button{flex:1;background:none;border:0;padding:10px 0 8px;color:var(--sub);font-size:12px}.tabs button.on{color:var(--ac);font-weight:700}
+.tabs span{display:block;font-size:20px}
+.fab{position:fixed;right:18px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:29px;border:0;background:var(--ac);color:#fff;font-size:30px;box-shadow:0 4px 14px #0004;z-index:6}
+.ov{position:fixed;inset:0;background:#0007;z-index:20;display:none;align-items:flex-end;justify-content:center}
+.ov.show{display:flex}
+#sheet{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto}
+#sheet h3{margin:0 0 10px}
+.fl{display:block;margin-bottom:10px;font-size:13px;color:var(--sub)}
+.fl input:not([type=checkbox]),.fl select{display:block;width:100%;margin-top:3px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
+.fl.c{display:flex;gap:8px;align-items:center;color:var(--tx)}
+.seg{display:flex;gap:6px;margin-bottom:10px}.seg button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
+.seg button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.btns{display:flex;gap:8px;margin-top:6px}.btns button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.btns .pri{background:var(--ac);color:#fff;border-color:var(--ac)}.btns .danger{color:var(--neg)}
+.btn{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);margin-bottom:10px}
+textarea{width:100%;height:90px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);padding:8px;font-size:12px}
+.note{color:var(--sub);font-size:12px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#222;color:#fff;padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30;font-size:14px}#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<button class="fab" id="fab" aria-label="追加">＋</button>
+<div class="tabs" id="tabs"></div>
+<div class="ov" id="ov"><div id="sheet"></div></div>
+<script>
+const KEY='kakeibo-sora-v1';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const yen=n=>(n<0?'−':'')+'¥'+Math.abs(Math.round(n)).toLocaleString('ja-JP');
+const mi=m=>{const p=m.split('-');return +p[0]*12+ +p[1]-1};
+const mf=i=>Math.floor(i/12)+'-'+String(i%12+1).padStart(2,'0');
+const ml=m=>m.slice(0,4)+'年'+(+m.slice(5))+'月';
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+function seed(){
+  const tx=[];
+  [['2027-04',35000],['2027-05',30000]].forEach(([m,wd])=>{
+    const a=(type,item,amt,acc,note,to,asExp)=>tx.push({id:uid(),m,type,item,amt,acc,note:note||'',to,asExp});
+    a('inc','給与',230000,'三井住友銀行');
+    a('exp','家賃',20000,'三井住友銀行','給与天引き');
+    a('exp','水道光熱費',10000,'三井住友銀行','電気、ガス、水道');
+    a('exp','食費',50000,'三井住友銀行');
+    a('exp','交通費',10000,'三井住友銀行','ETC、電車等');
+    a('exp','ガソリン代',10000,'三井住友銀行');
+    a('exp','お小遣い',20000,'現金','洋服、雑貨、他');
+    a('xfer','ローン支払い',70000,'三井住友銀行','車、奨学金相当','家族',true);
+    a('xfer','貯蓄',20000,'三井住友銀行','横浜銀行に貯蓄','横浜銀行',true);
+    a('xfer','引出し',wd,'三井住友銀行','現金化','現金',false);
+  });
+  return{start:'2027-04',accs:['現金','郵便局','三井住友銀行','横浜銀行','AirPay','家族'],ext:'家族',
+    init:{},inc:['給与','賞与'],exp:['家賃','ローン支払い','水道光熱費','貯蓄','食費','交通費','ガソリン代','引出し','保険料','お小遣い'],
+    xi:['ローン支払い','貯蓄','引出し'],
+    loans:[{id:uid(),name:'奨学金',amount:2400000,years:10,start:'2027-04',note:'専門学校分'},
+      {id:uid(),name:'車のローン',amount:2700000,years:5,start:'2026-12',note:'NDロードスター'},
+      {id:uid(),name:'車の残債',amount:300000,years:5,start:'2027-04',note:'NCロードスター分'}],tx};
+}
+function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let S=load();
+let view='home';
+let cur=(()=>{const d=new Date();const t=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return mi(t)<mi(S.start)?S.start:t})();
+
+function calc(m){
+  const bal={};S.accs.forEach(a=>bal[a]=+S.init[a]||0);
+  let inc=0,exp=0,sav=0;const cat={};
+  S.tx.filter(t=>t.m<=m).forEach(t=>{
+    const c=t.m===m;
+    const ex=()=>{if(!c)return;exp+=t.amt;cat[t.item]=(cat[t.item]||0)+t.amt;if(t.item==='貯蓄')sav+=t.amt};
+    if(t.type==='inc'){bal[t.acc]+=t.amt;if(c)inc+=t.amt}
+    else if(t.type==='exp'){bal[t.acc]-=t.amt;ex()}
+    else{bal[t.acc]-=t.amt;bal[t.to]+=t.amt;if(t.asExp)ex()}
+  });
+  const usable=S.accs.filter(a=>a!==S.ext).reduce((s,a)=>s+bal[a],0)-sav;
+  return{bal,inc,exp,sav,cat,usable};
+}
+function loanInfo(l,m){
+  const n=l.years*12,mo=l.amount/n,i=mi(m)-mi(l.start);
+  return{n,mo,end:mf(mi(l.start)+n-1),active:i>=0&&i<n,paid:Math.max(0,Math.min(n,i+1)),
+    rest:l.amount-mo*Math.max(0,Math.min(n,i+1))};
+}
+
+/* ---------- views ---------- */
+function monthNav(){return`<div class="mn"><button data-nav="-1">◀</button><b>${ml(cur)}</b><button data-nav="1">▶</button></div>`}
+function home(){
+  const c=calc(cur);
+  const plan=S.loans.reduce((s,l)=>{const q=loanInfo(l,cur);return s+(q.active?q.mo:0)},0);
+  const paid=S.tx.filter(t=>t.m===cur&&t.item==='ローン支払い').reduce((s,t)=>s+t.amt,0);
+  const cats=Object.entries(c.cat).sort((a,b)=>b[1]-a[1]);
+  const mx=cats.length?cats[0][1]:1;
+  return monthNav()+`<div class="hero"><small>今月の残金</small><b>${yen(c.usable)}</b><small>口座残高の合計 − 今月の貯蓄</small></div>
+  <div class="card"><h4>口座残高（月末）</h4><div class="grid">${S.accs.map(a=>`<div><small>${esc(a)}</small><b class="${c.bal[a]<0?'neg':''}">${yen(c.bal[a])}</b></div>`).join('')}</div></div>
+  <div class="card"><h4>今月の収支</h4>
+  <div class="row"><span>収入</span><b class="pos">${yen(c.inc)}</b></div>
+  <div class="row"><span>支出</span><b class="neg">${yen(c.exp)}</b></div>
+  <div class="row"><span>収支</span><b class="${c.inc-c.exp<0?'neg':'pos'}">${yen(c.inc-c.exp)}</b></div></div>
+  <div class="card"><h4>ローン</h4><div class="row"><span>今月の返済予定<small>登録済み ${yen(paid)}</small></span><b>${yen(plan)}</b></div></div>
+  <div class="card"><h4>支出の内訳</h4>${cats.length?cats.map(([k,v])=>`<div style="margin-bottom:8px"><div class="row" style="padding:0;border:0"><span>${esc(k)}</span><span>${yen(v)}</span></div><div class="bar"><i style="width:${v/mx*100}%"></i></div></div>`).join(''):'<span class="note">データがありません</span>'}</div>`;
+}
+function list(){
+  const t=S.tx.filter(x=>x.m===cur);
+  const grp=[['inc','収入'],['exp','支出'],['xfer','口座振替']];
+  let h=monthNav();
+  if(!t.length){
+    const pv=mf(mi(cur)-1);
+    h+=`<div class="card"><p class="note">この月の記録はまだありません。</p>${S.tx.some(x=>x.m===pv)?`<button class="btn" id="cp">${ml(pv)}の内容をコピー</button>`:''}</div>`;
+  }
+  grp.forEach(([k,lb])=>{
+    const r=t.filter(x=>x.type===k);if(!r.length)return;
+    h+=`<div class="card"><h4>${lb}　${yen(r.reduce((s,x)=>s+x.amt,0))}</h4>`+r.map(x=>
+      `<div class="row" data-e="${x.id}"><span>${esc(x.item)}<small>${k==='xfer'?esc(x.acc)+' → '+esc(x.to):esc(x.acc)}${x.note?'　'+esc(x.note):''}</small></span><b class="${k==='inc'?'pos':''}">${yen(x.amt)}</b></div>`).join('')+'</div>';
+  });
+  return h;
+}
+function loans(){
+  const tot=S.loans.reduce((s,l)=>{const q=loanInfo(l,cur);return s+(q.active?q.mo:0)},0);
+  return monthNav()+`<div class="card"><h4>${ml(cur)}の返済合計</h4><b style="font-size:26px">${yen(tot)}</b></div>`+
+  S.loans.map(l=>{const q=loanInfo(l,cur);return`<div class="card" data-l="${l.id}"><div class="row" style="border:0;padding:0"><b>${esc(l.name)}</b><span>${q.active?yen(q.mo)+'／月':'<span class="note">返済なし</span>'}</span></div>
+  <div class="note">${ml(l.start)}〜${ml(q.end)}（${q.n}回）${l.note?'・'+esc(l.note):''}</div>
+  <div class="bar"><i style="width:${q.paid/q.n*100}%"></i></div>
+  <div class="row" style="border:0;padding:6px 0 0"><span class="note">${q.paid}／${q.n}回</span><span>残り ${yen(q.rest)}</span></div></div>`}).join('')+`<button class="btn" id="addloan">＋ ローンを追加</button>`;
+}
+function settings(){
+  return`<div class="card"><h4>口座の開始残高（${ml(S.start)}の前）</h4>`+S.accs.map(a=>`<label class="fl">${esc(a)}<input type="number" inputmode="numeric" data-init="${esc(a)}" value="${+S.init[a]||0}"></label>`).join('')+`</div>
+  <div class="card"><h4>項目（カンマ区切り）</h4>
+  <label class="fl">収入<input id="s_inc" value="${esc(S.inc.join(','))}"></label>
+  <label class="fl">支出<input id="s_exp" value="${esc(S.exp.join(','))}"></label>
+  <label class="fl">口座振替<input id="s_xi" value="${esc(S.xi.join(','))}"></label>
+  <label class="fl">開始月<input type="month" id="s_start" value="${S.start}"></label>
+  <button class="btn" id="s_save">設定を保存</button></div>
+  <div class="card"><h4>バックアップ</h4><p class="note">データはこの端末のSafariに保存されます。機種変更や履歴削除に備え、定期的にコピーして「メモ」等に保管してください。</p>
+  <textarea id="bk"></textarea><div class="btns"><button id="bk_copy">コピー</button><button id="bk_load" class="pri">貼り付けて復元</button></div>
+  <button class="btn danger" id="reset" style="margin-top:10px">初期データに戻す</button></div>`;
+}
+function render(){
+  const v={home,list,loans,settings}[view]();
+  $('#app').innerHTML=v;
+  $('#fab').style.display=(view==='home'||view==='list')?'block':'none';
+  $('#tabs').innerHTML=[['home','🏠','ホーム'],['list','📒','明細'],['loans','🏦','ローン'],['settings','⚙️','設定']].map(([k,i,l])=>`<button data-t="${k}" class="${view===k?'on':''}"><span>${i}</span>${l}</button>`).join('');
+  if(view==='settings')$('#bk').value=JSON.stringify(S);
+}
+
+/* ---------- generic form ---------- */
+function openForm(title,fieldsFn,v,onSave,onDel){
+  const draw=()=>{
+    const fs=fieldsFn(v);
+    $('#sheet').innerHTML=`<h3>${title}</h3>`+fs.map(f=>{
+      const id='f_'+f.k;
+      if(f.t==='seg')return`<div class="seg">${f.o.map(o=>`<button data-k="${f.k}" data-v="${o[0]}" class="${v[f.k]===o[0]?'on':''}">${o[1]}</button>`).join('')}</div>`;
+      if(f.t==='sel')return`<label class="fl">${f.l}<select id="${id}">${f.o.map(o=>`<option ${o===v[f.k]?'selected':''}>${esc(o)}</option>`).join('')}</select></label>`;
+      if(f.t==='chk')return`<label class="fl c"><input type="checkbox" id="${id}" ${v[f.k]?'checked':''}>${f.l}</label>`;
+      return`<label class="fl">${f.l}<input id="${id}" type="${f.t}" ${f.t==='number'?'inputmode="numeric"':''} value="${esc(v[f.k]==null?'':v[f.k])}"></label>`;
+    }).join('')+`<div class="btns">${onDel?'<button id="f_del" class="danger">削除</button>':''}<button id="f_cancel">閉じる</button><button id="f_ok" class="pri">保存</button></div>`;
+    const collect=()=>fs.forEach(f=>{const e=$('#f_'+f.k);if(e)v[f.k]=f.t==='chk'?e.checked:f.t==='number'?(+e.value||0):e.value});
+    $('#sheet').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{collect();v[b.dataset.k]=b.dataset.v;if(v.onSeg)v.onSeg(v);draw()});
+    const it=$('#f_item');if(it&&v.type==='xfer')it.onchange=()=>{const c=$('#f_asExp');if(c)c.checked=it.value!=='引出し'};
+    $('#f_cancel').onclick=close;
+    $('#f_ok').onclick=()=>{collect();if(onSave(v)!==false){save();close();render()}};
+    if(onDel)$('#f_del').onclick=e=>arm(e.target,'もう一度押して削除',()=>{onDel();save();close();render()});
+  };
+  draw();$('#ov').classList.add('show');
+}
+function close(){$('#ov').classList.remove('show')}
+function toast(m){let t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t)}t.textContent=m;t.className='show';clearTimeout(t._h);t._h=setTimeout(()=>t.className='',2200)}
+function arm(b,label,fn){if(b.dataset.armed){fn();return}const o=b.textContent;b.dataset.armed='1';b.textContent=label;setTimeout(()=>{b.dataset.armed='';b.textContent=o},3500)}
+$('#ov').onclick=e=>{if(e.target.id==='ov')close()};
+
+function entryFields(v){
+  const f=[{k:'type',t:'seg',o:[['inc','収入'],['exp','支出'],['xfer','口座振替']]}];
+  const lst=v.type==='inc'?S.inc:v.type==='exp'?S.exp:S.xi;
+  if(!lst.includes(v.item))v.item=lst[0];
+  f.push({k:'item',t:'sel',l:'項目',o:lst},{k:'amt',t:'number',l:'金額'},
+    {k:'acc',t:'sel',l:v.type==='xfer'?'元の口座':'金融機関',o:S.accs});
+  if(v.type==='xfer')f.push({k:'to',t:'sel',l:'先の口座',o:S.accs},{k:'asExp',t:'chk',l:'支出として集計する'});
+  f.push({k:'note',t:'text',l:'備考'});
+  return f;
+}
+function editEntry(id){
+  const ex=S.tx.find(t=>t.id===id);
+  const v=ex?{...ex}:{type:'exp',item:'',amt:'',acc:S.accs[2]||S.accs[0],to:S.ext,note:'',asExp:true};
+  openForm(ex?'明細を編集':'明細を追加',entryFields,v,v=>{
+    if(!v.amt){toast('金額を入力してください');return false}
+    const o={id:ex?ex.id:uid(),m:ex?ex.m:cur,type:v.type,item:v.item,amt:+v.amt,acc:v.acc,note:v.note};
+    if(v.type==='xfer'){o.to=v.to;o.asExp=!!v.asExp}
+    if(ex)Object.assign(ex,o);else S.tx.push(o);
+  },ex?()=>{S.tx=S.tx.filter(t=>t.id!==id)}:null);
+}
+function editLoan(id){
+  const ex=S.loans.find(l=>l.id===id);
+  const v=ex?{...ex}:{name:'',amount:'',years:5,start:cur,note:''};
+  openForm(ex?'ローンを編集':'ローンを追加',()=>[{k:'name',t:'text',l:'用途'},{k:'amount',t:'number',l:'金額'},{k:'years',t:'number',l:'期間（年）'},{k:'start',t:'month',l:'開始月'},{k:'note',t:'text',l:'備考'}],v,v=>{
+    if(!v.name||!v.amount||!v.years){toast('用途・金額・期間を入力してください');return false}
+    const o={id:ex?ex.id:uid(),name:v.name,amount:+v.amount,years:+v.years,start:v.start,note:v.note};
+    if(ex)Object.assign(ex,o);else S.loans.push(o);
+  },ex?()=>{S.loans=S.loans.filter(l=>l.id!==id)}:null);
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const g=s=>e.target.closest(s);
+  let el;
+  if(el=g('[data-nav]')){cur=mf(mi(cur)+ +el.dataset.nav);render()}
+  else if(el=g('[data-t]')){view=el.dataset.t;render();window.scrollTo(0,0)}
+  else if(g('#fab'))editEntry();
+  else if(el=g('[data-e]'))editEntry(el.dataset.e);
+  else if(el=g('[data-l]'))editLoan(el.dataset.l);
+  else if(g('#addloan'))editLoan();
+  else if(g('#cp')){const pv=mf(mi(cur)-1);S.tx.filter(x=>x.m===pv).forEach(x=>S.tx.push({...x,id:uid(),m:cur}));save();render()}
+  else if(g('#s_save')){
+    const sp=id=>$(id).value.split(',').map(s=>s.trim()).filter(Boolean);
+    S.inc=sp('#s_inc');S.exp=sp('#s_exp');S.xi=sp('#s_xi');if($('#s_start').value)S.start=$('#s_start').value;
+    document.querySelectorAll('[data-init]').forEach(i=>S.init[i.dataset.init]=+i.value||0);
+    save();render();toast('保存しました');
+  }
+  else if(g('#bk_copy')){const t=$('#bk');t.select();try{navigator.clipboard.writeText(t.value)}catch(x){document.execCommand('copy')}toast('コピーしました')}
+  else if(g('#bk_load')){
+    let d;try{d=JSON.parse($('#bk').value);if(!d.tx||!d.accs)throw 0}catch(x){toast('データの形式が正しくありません');d=null}
+    if(d)arm(g('#bk_load'),'もう一度押して置換',()=>{S=d;save();render();toast('復元しました')})
+  }
+  else if(g('#reset')){arm(g('#reset'),'もう一度押すと初期化します',()=>{S=seed();save();render();toast('初期化しました')})}
+});
+render();
+</script>
+</body>
+</html>

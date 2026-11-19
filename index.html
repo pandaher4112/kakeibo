@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="家計簿">
-<title>家計簿</title>
+<meta name="apple-mobile-web-app-title" content="家計簿ソラ">
+<title>家計簿ソラ</title>
 <style>
 :root{--bg:#f3f5f9;--card:#fff;--tx:#1c2430;--sub:#6b7686;--ac:#2f6fed;--line:#e3e7ee;--neg:#d6453d;--pos:#1f9d62;--hero:#2f6fed;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -45,6 +45,7 @@ button,input,select{font:inherit;color:inherit}
 .btn{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);margin-bottom:10px}
 textarea{width:100%;height:90px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);padding:8px;font-size:12px}
 .note{color:var(--sub);font-size:12px}
+.ar{display:flex;gap:8px;margin-bottom:8px}.ar input{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px;color:var(--tx)}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#222;color:#fff;padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30;font-size:14px}#toast.show{opacity:1}
 </style>
 </head>
@@ -151,7 +152,7 @@ function loans(){
   <div class="row" style="border:0;padding:6px 0 0"><span class="note">${q.paid}／${q.n}回</span><span>残り ${yen(q.rest)}</span></div></div>`}).join('')+`<button class="btn" id="addloan">＋ ローンを追加</button>`;
 }
 function settings(){
-  return`<div class="card"><h4>口座の開始残高（${ml(S.start)}の前）</h4>`+S.accs.map(a=>`<label class="fl">${esc(a)}<input type="number" inputmode="numeric" data-init="${esc(a)}" value="${+S.init[a]||0}"></label>`).join('')+`</div>
+  return`<div class="card"><h4>口座名と開始残高（${ml(S.start)}の前）</h4><div class="ar note"><span style="flex:1">口座名</span><span style="flex:1">開始残高</span></div>`+S.accs.map((a,i)=>`<div class="ar"><input data-an="${i}" value="${esc(a)}"><input type="number" inputmode="numeric" data-init="${i}" value="${+S.init[a]||0}"></div>`).join('')+`<p class="note">名前を変えると、過去の明細も新しい名前に切り替わります。「${esc(S.ext)}」は残金の合計に含まれない口座です。</p></div>
   <div class="card"><h4>項目（カンマ区切り）</h4>
   <label class="fl">収入<input id="s_inc" value="${esc(S.inc.join(','))}"></label>
   <label class="fl">支出<input id="s_exp" value="${esc(S.exp.join(','))}"></label>
@@ -237,9 +238,16 @@ document.addEventListener('click',e=>{
   else if(g('#addloan'))editLoan();
   else if(g('#cp')){const pv=mf(mi(cur)-1);S.tx.filter(x=>x.m===pv).forEach(x=>S.tx.push({...x,id:uid(),m:cur}));save();render()}
   else if(g('#s_save')){
+    const names=[...document.querySelectorAll('[data-an]')].map(i=>i.value.trim());
+    if(names.some(n=>!n)||new Set(names).size!==names.length){toast('口座名は空欄・重複なしで入力してください');return}
+    const mp={},init={};
+    S.accs.forEach((o,i)=>{mp[o]=names[i];init[names[i]]=+document.querySelector('[data-init="'+i+'"]').value||0});
+    S.tx.forEach(t=>{t.acc=mp[t.acc]||t.acc;if(t.to)t.to=mp[t.to]||t.to});
+    if(mp[S.ext])S.ext=mp[S.ext];
+    S.accs=names;S.init=init;
     const sp=id=>$(id).value.split(',').map(s=>s.trim()).filter(Boolean);
     S.inc=sp('#s_inc');S.exp=sp('#s_exp');S.xi=sp('#s_xi');if($('#s_start').value)S.start=$('#s_start').value;
-    document.querySelectorAll('[data-init]').forEach(i=>S.init[i.dataset.init]=+i.value||0);
+    
     save();render();toast('保存しました');
   }
   else if(g('#bk_copy')){const t=$('#bk');t.select();try{navigator.clipboard.writeText(t.value)}catch(x){document.execCommand('copy')}toast('コピーしました')}

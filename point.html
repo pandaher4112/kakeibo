@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#173d66"><title>MUFGポイント管理</title>
+<style>
+:root{--navy:#173d66;--blue:#2468a6;--pale:#edf4fb;--ink:#1d2935;--muted:#687789;--line:#dce4ec;--green:#16845b;--gold:#b7791f;--bg:#f4f7fa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:linear-gradient(120deg,#173d66,#286da8);color:white;padding:22px 16px 20px}header .wrap,main{max-width:980px;margin:auto}h1{font-size:22px;margin:0 0 5px}header p{margin:0;color:#dceafa;font-size:13px}.tabs{display:flex;gap:8px;margin:14px 0 0}.tab{border:1px solid #ffffff66;color:white;background:#ffffff18;border-radius:20px;padding:8px 14px;font-size:13px}.tab.active{background:white;color:var(--navy);font-weight:700}main{padding:16px 12px 40px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px #203b5710}.topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.topline h2{font-size:17px;margin:0}.monthnav{display:flex;align-items:center;gap:8px}.monthnav button,.btn{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 12px;color:var(--ink);font-size:14px}.monthnav input{border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.metric{background:var(--pale);border-radius:12px;padding:12px}.metric small{display:block;color:var(--muted);font-size:12px}.metric strong{display:block;font-size:20px;margin-top:5px;color:var(--navy);font-variant-numeric:tabular-nums}.metric.emph{background:#e8f6ef}.metric.emph strong{color:var(--green)}.tablewrap{overflow-x:auto;margin-top:12px}table{width:100%;border-collapse:collapse;min-width:560px}th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;font-size:13px}th{background:#f7f9fc;color:#526274;font-weight:600}th:first-child,td:first-child{text-align:left}td input{width:100%;min-width:90px;padding:9px 8px;border:1px solid var(--line);border-radius:8px;text-align:right;font:inherit;font-variant-numeric:tabular-nums}td input:focus{outline:2px solid #9fc5e8;border-color:var(--blue)}.rategrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}.field input{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font:inherit}.hint{color:var(--muted);font-size:12px;line-height:1.6;margin:10px 0 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.primary{background:var(--navy);color:white;border-color:var(--navy)}.danger{color:#b42318}.section{display:none}.section.active{display:block}.summaryrow{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}.summaryrow strong{font-variant-numeric:tabular-nums}.pill{display:inline-block;background:#edf4fb;color:#245d91;border-radius:20px;padding:4px 8px;font-size:11px}.monthlist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.monthitem{border:1px solid var(--line);border-radius:10px;padding:10px;background:white;text-align:left}.monthitem b{display:block;color:var(--navy);font-size:13px}.monthitem span{display:block;color:var(--muted);font-size:12px;margin-top:4px}.foot{font-size:11px;color:var(--muted);text-align:center;padding:8px}
+@media(max-width:600px){header{padding:18px 14px}h1{font-size:20px}main{padding:12px 10px 30px}.panel{padding:13px;border-radius:13px}.cards{gap:7px}.metric{padding:10px 8px}.metric strong{font-size:17px}.rategrid{grid-template-columns:repeat(2,1fr)}.monthlist{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+<header><div class="wrap"><h1>MUFGポイント管理</h1><p>利用金額の入力・還元ポイントの自動計算</p><div class="tabs"><button class="tab active" data-tab="input">入力・計算</button><button class="tab" data-tab="history">月別一覧</button><button class="tab" data-tab="settings">設定・バックアップ</button></div></div></header>
+<main>
+<section id="input" class="section active">
+<div class="panel"><div class="topline"><h2>対象月</h2><div class="monthnav"><button id="prev">‹</button><input type="month" id="month"><button id="next">›</button></div></div>
+<div class="cards"><div class="metric"><small>利用合計</small><strong id="spendTotal">¥0</strong></div><div class="metric"><small>獲得ポイント</small><strong id="pointTotal">0 pt</strong></div><div class="metric"><small>ポイント換算対象額</small><strong id="eligible">¥0</strong></div><div class="metric emph"><small>翌月支給予定ポイント</small><strong id="actualAward">0 pt</strong></div></div><p class="hint">対象月の利用分に対して翌月に支給されるポイントです（Excel V列の計算式を参考）。</p></div>
+<div class="panel"><div class="topline"><h2>利用金額</h2><span class="pill">金額を入力すると自動計算</span></div>
+<div class="tablewrap"><table><thead><tr><th>利用区分</th><th>利用金額（円）</th><th>計算対象</th></tr></thead><tbody>
+<tr><td>OK（通常対象）</td><td><input id="ok" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></td><td>50,000円上限</td></tr>
+<tr><td>セブン</td><td><input id="seven" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></td><td rowspan="2">合算50,000円上限</td></tr>
+<tr><td>その他</td><td><input id="other" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></td></tr>
+<tr><td>対象外</td><td><input id="excluded" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></td><td>ポイント対象外</td></tr>
+</tbody></table></div><p class="hint">「対象外」は利用合計には含まれますが、還元ポイントの計算には含めません。</p></div>
+<div class="panel"><h2 style="font-size:17px;margin:0">還元率・計算結果</h2><div class="rategrid">
+<div class="field"><label>基本還元率（%）</label><input id="baseRate" type="number" min="0" max="100" step=".1"></div>
+<div class="field"><label>OK還元率（%）</label><input id="okRate" type="number" min="0" max="100" step=".1"></div>
+<div class="field"><label>セブン還元率（%）</label><input id="sevenRate" type="number" min="0" max="100" step=".1"></div>
+<div class="field"><label>その他還元率（%）</label><input id="otherRate" type="number" min="0" max="100" step=".1"></div>
+<div class="field"><label>Plus10還元率（%）</label><input id="extraRate" type="number" min="0" max="100" step=".1"></div>
+
+<div class="field"><label>個別還元上限（円）</label><input id="bonusCap" type="number" min="0" step="1000"></div>
+</div><p class="hint">Excelの「MUFGポイント」シートにある計算の考え方をもとに、1,000円未満切り捨て・上限額を反映します。月ごとに還元率は変更できます。</p>
+<div class="tablewrap"><table><thead><tr><th>ポイント内訳</th><th>対象金額</th><th>還元額</th><th>ポイント</th></tr></thead><tbody id="resultRows"></tbody></table></div>
+<div class="actions"><button class="btn primary" id="save">この月の内容を保存</button><button class="btn" id="clear">この月をクリア</button></div><p class="hint" id="savedMsg">入力内容は端末内に自動保存されます。</p></div>
+</section>
+<section id="history" class="section"><div class="panel"><div class="topline"><h2>月別ポイント一覧</h2><span class="pill">保存済みデータ</span></div><div id="historyList" style="margin-top:12px"></div></div></section>
+<section id="settings" class="section"><div class="panel"><h2 style="font-size:17px;margin:0 0 8px">データ管理</h2><p class="hint">データはこのブラウザ内に保存されます。機種変更やブラウザ変更の前にバックアップしてください。</p><div class="actions"><button class="btn primary" id="export">バックアップを書き出す</button><label class="btn" for="importFile">バックアップを読み込む</label><input id="importFile" type="file" accept="application/json" hidden></div></div><div class="panel"><h2 style="font-size:17px;margin:0 0 8px">家計簿データを反映</h2><p class="hint">家計簿アプリのバックアップ（JSON）から、2026年11月の「支出」かつ支払方法が「MUFGカード」の取引を抽出し、2026年12月へ反映します。「店名・メモ」にOKを含むものはOK、「セブン」を含むものはセブン、それ以外は対象外に分類します。その他の金額は手動入力分を維持します。再反映時はOK・セブン・対象外の金額を置き換えます。</p><div class="actions"><label class="btn primary" for="kakeiboImport">家計簿バックアップを選択</label><input id="kakeiboImport" type="file" accept=".json,application/json" hidden></div><p class="hint" id="kakeiboImportStatus">まだ反映していません。</p></div><div class="panel"><h2 style="font-size:17px;margin:0 0 8px">計算について</h2><p class="hint">Plus10は「基本ポイント × Plus10還元率」を計算し、小数点以下を切り捨てます。Excelに合わせてPlus10還元率は初期値10%とし、月ごとに変更できます。実際のMUFGカードの適用条件・ポイント付与条件はカード種別やキャンペーンによって異なる場合があります。Excelの式と実際の付与結果を確認しながら、還元率を調整してください。</p></div></section>
+<div class="foot">MUFGポイント管理アプリ・端末内保存</div>
+</main>
+<script>
+const KEY='mufgPointManager_v1';
+const $=id=>document.getElementById(id);
+const yen=n=>'¥'+Math.round(n||0).toLocaleString('ja-JP');
+const num=id=>Math.max(0,Number($(id).value)||0);
+const defaults=()=>({baseRate:.5,okRate:6.5,sevenRate:6.5,otherRate:6.5,extraRate:10,bonusCap:50000,ok:0,seven:0,other:0,excluded:0});
+let db={months:{}}, current=new Date().toISOString().slice(0,7);
+try{db=JSON.parse(localStorage.getItem(KEY))||db}catch(e){}
+if(!db.months)db={months:{}};
+for(const v of Object.values(db.months)){if(v && v.extraRate===8)v.extraRate=10;}
+function getMonth(){return db.months[current]||defaults()}
+function persist(){localStorage.setItem(KEY,JSON.stringify(db))}
+function setFields(v){['ok','seven','other','excluded','baseRate','okRate','sevenRate','otherRate','extraRate','bonusCap'].forEach(k=>$(k).value=v[k]??defaults()[k]);calc()}
+function values(){let v={};['ok','seven','other','excluded','baseRate','okRate','sevenRate','otherRate','extraRate','bonusCap'].forEach(k=>v[k]=Number($(k).value)||0);return v}
+function floor1000(n){return Math.floor(Math.max(0,n)/1000)*1000}
+function compute(v){
+ const total=v.ok+v.seven+v.other+v.excluded, eligible=v.ok+v.seven+v.other;
+ const baseAmount=floor1000(total);
+ const baseYen=baseAmount*v.baseRate/100, basePts=baseYen/5;
+ const okAmount=Math.min(floor1000(v.ok),v.bonusCap);
+ const subSum=v.seven+v.other, subAllowed=subSum>=v.bonusCap?0:1;
+ const sevenAmount=subAllowed?Math.min(floor1000(v.seven),v.bonusCap):0;
+ const otherAmount=subAllowed?Math.min(floor1000(v.other),v.bonusCap):0;
+ const okYen=okAmount*v.okRate/100, sevenYen=sevenAmount*v.sevenRate/100, otherYen=otherAmount*v.otherRate/100;
+ const bonusPoints=Math.floor(okYen/5)+Math.floor(sevenYen/5)+Math.floor(otherYen/5);
+ const campaignPoints=Math.floor(basePts*v.extraRate/100);
+ const points=basePts+bonusPoints+campaignPoints;
+ return {...v,total,eligible,baseAmount,baseYen,basePts,okAmount,sevenAmount,otherAmount,okYen,sevenYen,otherYen,bonusPoints,campaignPoints,points};
+}
+function monthOffset(key,delta){let [y,m]=key.split('-').map(Number);let d=new Date(y,m-1+delta,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function calc(){
+ const result=compute(values());
+ const older=db.months[monthOffset(current,-2)];
+ const olderBonus=older?compute({...defaults(),...older}).bonusPoints:0;
+ const actualAward=result.basePts+result.campaignPoints+olderBonus;
+ $('spendTotal').textContent=yen(result.total);$('pointTotal').textContent=result.points.toLocaleString('ja-JP',{maximumFractionDigits:2})+' pt';$('eligible').textContent=yen(result.eligible);
+ $('actualAward').textContent=actualAward.toLocaleString('ja-JP',{maximumFractionDigits:2})+' pt';
+ $('resultRows').innerHTML=[
+ ['基本ポイント',result.baseAmount,result.baseYen,result.basePts],
+ ['OK追加ポイント',result.okAmount,result.okYen,Math.floor(result.okYen/5)],
+ ['セブン追加ポイント',result.sevenAmount,result.sevenYen,Math.floor(result.sevenYen/5)],
+ ['その他追加ポイント',result.otherAmount,result.otherYen,Math.floor(result.otherYen/5)],
+ ['Plus10（基本ポイントの'+result.extraRate+'%）',result.basePts,result.campaignPoints,result.campaignPoints],
+ ['合計',result.eligible,result.baseYen+result.okYen+result.sevenYen+result.otherYen,result.points]
+ ].map((r,i)=>`<tr${i===5?' style="font-weight:700;background:#edf4fb"':''}><td>${r[0]}</td><td>${i===4?Number(r[1]).toLocaleString('ja-JP',{maximumFractionDigits:2})+' pt':yen(r[1])}</td><td>${i===4?Number(r[2]).toLocaleString('ja-JP')+' pt':yen(r[2])}</td><td>${r[3].toLocaleString('ja-JP',{maximumFractionDigits:2})} pt</td></tr>`).join('');
+ return {...result,actualAward};
+}
+function save(silent=false){db.months[current]=calc();persist();$('savedMsg').textContent='保存しました（'+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'）';renderHistory()}
+function load(){ $('month').value=current;setFields(getMonth())}
+function moveMonth(d){let [y,m]=current.split('-').map(Number);let x=new Date(y,m-1+d,1);current=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');load()}
+function renderHistory(){
+ const keys=Object.keys(db.months).sort().reverse();
+ if(!keys.length){$('historyList').innerHTML='<p class="hint">まだ保存された月別データはありません。</p>';return}
+ $('historyList').innerHTML='<div class="monthlist">'+keys.map(k=>{let v=db.months[k],p=v.points??0,t=v.total??((v.ok||0)+(v.seven||0)+(v.other||0)+(v.excluded||0));return `<button class="monthitem" data-month="${k}"><b>${k}</b><span>利用 ${yen(t)} ／ ${p.toLocaleString('ja-JP')} pt</span></button>`}).join('')+'</div>';
+ document.querySelectorAll('[data-month]').forEach(b=>b.onclick=()=>{current=b.dataset.month;load();document.querySelector('[data-tab="input"]').click()})
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));if(b.dataset.tab==='history')renderHistory()});
+$('prev').onclick=()=>moveMonth(-1);$('next').onclick=()=>moveMonth(1);$('month').onchange=e=>{current=e.target.value||current;load()};
+['ok','seven','other','excluded','baseRate','okRate','sevenRate','otherRate','extraRate','bonusCap'].forEach(k=>$(k).addEventListener('input',()=>{calc();db.months[current]=calc();persist();renderHistory()}));
+$('save').onclick=()=>save();$('clear').onclick=()=>{if(confirm('この月の入力内容をクリアしますか？')){db.months[current]=defaults();persist();load();$('savedMsg').textContent='この月をクリアしました。'}};
+$('export').onclick=()=>{let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='MUFGポイント_backup.json';a.click();URL.revokeObjectURL(a.href)};
+$('importFile').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.months)throw 0;if(confirm('現在のデータをバックアップ内容で置き換えますか？')){db=x;persist();load();renderHistory();alert('読み込みました')}}catch(_){alert('バックアップを読み込めませんでした')}};r.readAsText(f);e.target.value=''};
+$('kakeiboImport').onchange=e=>{
+ const f=e.target.files[0];if(!f)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+  try{
+   const source=JSON.parse(reader.result);
+   const sourceMonth='2026-11',targetMonth='2026-12';
+   if(!source||!source.months||!source.months[sourceMonth]||!Array.isArray(source.months[sourceMonth].transactions))throw new Error('2026年11月の取引データが見つかりません');
+   const matched=source.months[sourceMonth].transactions.filter(tx=>tx&&tx.type==='expense'&&String(tx.method||'').trim()==='MUFGカード');
+   const buckets={ok:[],seven:[],excluded:[]};
+   for(const tx of matched){
+    const memo=String(tx.memo||'');
+    const key=memo.toLowerCase().includes('ok')?'ok':memo.includes('セブン')?'seven':'excluded';
+    buckets[key].push(tx);
+   }
+   const amountOf=tx=>Number(tx.amount)||0;
+   const totals={ok:0,seven:0,excluded:0};
+   for(const key of Object.keys(buckets))totals[key]=buckets[key].reduce((sum,tx)=>sum+amountOf(tx),0);
+   const count=matched.length;
+   const details=Object.entries(buckets).map(([key,items])=>{
+    const label={ok:'OK',seven:'セブン',excluded:'対象外'}[key];
+    const lines=items.map(tx=>`  ${tx.date||'日付未登録'}｜${tx.memo||'メモなし'}｜${yen(amountOf(tx))}`).join('\n');
+    return `${label}：${items.length}件／${yen(totals[key])}${lines?'\n'+lines:''}`;
+   }).join('\n\n');
+   const message=`2026年11月のMUFGカード支出 ${count}件を確認しました。\n\n2026年12月への反映内容\n${details}\n\n反映すると、12月のOK・セブン・対象外の金額を上記集計で置き換えます。\n「その他」は現在の金額を維持します。\nよろしいですか？`;
+   if(!confirm(message))return;
+   current=targetMonth;
+   const existing={...defaults(),...(db.months[current]||{})};
+   existing.ok=totals.ok;
+   existing.seven=totals.seven;
+   existing.excluded=totals.excluded;
+   db.months[current]=existing;
+   persist();load();renderHistory();
+   $('kakeiboImportStatus').textContent=`反映済み：11月のMUFGカード支出${count}件。OK ${yen(totals.ok)}／セブン ${yen(totals.seven)}／対象外 ${yen(totals.excluded)}。その他は変更していません。`;
+   document.querySelector('[data-tab="input"]').click();
+   alert(`2026年12月に反映しました。\nOK：${yen(totals.ok)}\nセブン：${yen(totals.seven)}\n対象外：${yen(totals.excluded)}\nその他：変更なし`);
+  }catch(err){alert(err.message||'家計簿バックアップを読み込めませんでした。家計簿アプリのJSONバックアップを選択してください。')}
+  finally{e.target.value=''}
+ };
+ reader.readAsText(f);
+};
+load();renderHistory();
+</script></body></html>

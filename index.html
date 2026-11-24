@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="家計簿">
-<title>家計簿</title>
+<meta name="apple-mobile-web-app-title" content="家計簿ソラ">
+<title>家計簿ソラ</title>
 <style>
 :root{--bg:#f3f5f9;--card:#fff;--tx:#1c2430;--sub:#6b7686;--ac:#2f6fed;--line:#e3e7ee;--neg:#d6453d;--pos:#1f9d62;--hero:#2f6fed;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -45,7 +45,9 @@ button,input,select{font:inherit;color:inherit}
 .btn{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);margin-bottom:10px}
 textarea{width:100%;height:90px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);padding:8px;font-size:12px}
 .note{color:var(--sub);font-size:12px}
-.ar{display:flex;gap:8px;margin-bottom:8px}.ar input{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px;color:var(--tx)}
+.ar{display:flex;gap:8px;margin-bottom:8px}
+.ib{margin-bottom:14px}.il{list-style:none;margin:6px 0;padding:0}.il li{display:flex;align-items:center;gap:10px;padding:8px 6px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:var(--bg)}.il li.dg{opacity:.6;border-color:var(--ac)}
+.hd{touch-action:none;cursor:grab;padding:4px 10px;color:var(--sub);user-select:none;-webkit-user-select:none;font-size:20px}.nm{flex:1}.rm{background:none;border:0;color:var(--neg);font-size:22px;padding:0 10px}.addi{flex:0 0 auto;padding:0 16px;border:1px solid var(--line);border-radius:10px;background:var(--card)}.ar input{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px;color:var(--tx)}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#222;color:#fff;padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30;font-size:14px}#toast.show{opacity:1}
 </style>
 </head>
@@ -149,9 +151,9 @@ function list(){
     h+=`<div class="card"><p class="note">この月の記録はまだありません。</p>${S.tx.some(x=>x.m===pv)?`<button class="btn" id="cp">${ml(pv)}の内容をコピー</button>`:''}</div>`;
   }
   grp.forEach(([k,lb])=>{
-    const r=t.filter(x=>x.type===k);if(!r.length)return;
+    const r=t.filter(x=>x.type===k).sort((a,b)=>(a.d||a.m+'-01').localeCompare(b.d||b.m+'-01'));if(!r.length)return;
     h+=`<div class="card"><h4>${lb}　${yen(r.reduce((s,x)=>s+x.amt,0))}</h4>`+r.map(x=>
-      `<div class="row" data-e="${x.id}"><span>${esc(x.item)}<small>${k==='xfer'?esc(x.acc)+' → '+esc(x.to):esc(accName(x.acc))}${x.note?'　'+esc(x.note):''}</small></span><b class="${k==='inc'?'pos':''}">${yen(x.amt)}</b></div>`).join('')+'</div>';
+      `<div class="row" data-e="${x.id}"><span>${esc(x.item)}<small>${x.d?(+x.d.slice(5,7))+'/'+(+x.d.slice(8))+'　':''}${k==='xfer'?esc(x.acc)+' → '+esc(x.to):esc(accName(x.acc))}${x.note?'　'+esc(x.note):''}</small></span><b class="${k==='inc'?'pos':''}">${yen(x.amt)}</b></div>`).join('')+'</div>';
   });
   return h;
 }
@@ -166,10 +168,10 @@ function loans(){
 function cardSet(){return`<div class="card"><h4>カード</h4>`+(S.cards.length?S.cards.map(cd=>`<div class="row" data-c="${cd.id}"><span>${esc(cd.name)}<small>${DL[cd.delay]}払い${cd.acc?'・引落 '+esc(cd.acc):''}</small></span><span class="note">編集</span></div>`).join(''):'<p class="note">カードはまだありません</p>')+`<button class="btn" id="addcard" style="margin-top:8px">＋ カードを追加</button><p class="note">カードで支払った支出は使用月の支出として集計します。引落口座を設定すると、支払い月にその口座の残高から引かれます。</p></div>`}
 function settings(){
   return`<div class="card"><h4>口座名と開始残高（${ml(S.start)}の前）</h4><div class="ar note"><span style="flex:1">口座名</span><span style="flex:1">開始残高</span></div>`+S.accs.map((a,i)=>`<div class="ar"><input data-an="${i}" value="${esc(a)}"><input type="number" inputmode="numeric" data-init="${i}" value="${+S.init[a]||0}"></div>`).join('')+`<p class="note">名前を変えると、過去の明細も新しい名前に切り替わります。「${esc(S.ext)}」は残金の合計に含まれない口座です。</p></div>
-  ${cardSet()}<div class="card"><h4>項目（カンマ区切り）</h4>
-  <label class="fl">収入<input id="s_inc" value="${esc(S.inc.join(','))}"></label>
-  <label class="fl">支出<input id="s_exp" value="${esc(S.exp.join(','))}"></label>
-  <label class="fl">口座振替<input id="s_xi" value="${esc(S.xi.join(','))}"></label>
+  ${cardSet()}<div class="card"><h4>項目（≡をドラッグして並べ替え）・開始月</h4>
+  <div id="items">${itemsBox()}</div>
+  
+  
   <label class="fl">開始月<input type="month" id="s_start" value="${S.start}"></label>
   <button class="btn" id="s_save">設定を保存</button><button class="btn" id="shift">明細を開始月に合わせてずらす</button><p class="note">いちばん古い明細の月が開始月になるよう、すべての明細の月をまとめて移動します（ローンの開始月は変わりません）。先に開始月を保存してから押してください。</p></div>
   <div class="card"><h4>バックアップ</h4><p class="note">データはこの端末のSafariに保存されます。機種変更や履歴削除に備え、定期的にコピーして「メモ」等に保管してください。</p>
@@ -213,7 +215,7 @@ function entryFields(v){
   const f=[{k:'type',t:'seg',o:[['inc','収入'],['exp','支出'],['xfer','口座振替']]}];
   const lst=v.type==='inc'?S.inc:v.type==='exp'?S.exp:S.xi;
   if(!lst.includes(v.item))v.item=lst[0];
-  f.push({k:'item',t:'sel',l:'項目',o:lst},{k:'amt',t:'number',l:'金額'},
+  f.push({k:'d',t:'date',l:'日付'},{k:'item',t:'sel',l:'項目',o:lst},{k:'newItem',t:'text',l:'項目を追加する場合はここに入力（任意）'},{k:'amt',t:'number',l:'金額'},
     {k:'acc',t:'sel',l:v.type==='xfer'?'元の口座':v.type==='exp'?'支払い方法（口座・カード）':'入金口座',o:v.type==='exp'?[...S.accs,...S.cards.map(c=>['c:'+c.id,c.name+'（カード）'])]:S.accs});
   if(v.type==='xfer')f.push({k:'to',t:'sel',l:'先の口座',o:S.accs},{k:'asExp',t:'chk',l:'支出として集計する'});
   f.push({k:'note',t:'text',l:'備考'});
@@ -221,12 +223,14 @@ function entryFields(v){
 }
 function editEntry(id){
   const ex=S.tx.find(t=>t.id===id);
-  const v=ex?{...ex}:{type:'exp',item:'',amt:'',acc:S.accs[2]||S.accs[0],to:S.ext,note:'',asExp:true};
+  const td=new Date(),ts=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0');
+  const v=ex?{...ex,d:ex.d||ex.m+'-01'}:{d:ts.slice(0,7)===cur?ts:cur+'-01',type:'exp',item:'',amt:'',acc:S.accs[2]||S.accs[0],to:S.ext,note:'',asExp:true};
   openForm(ex?'明細を編集':'明細を追加',entryFields,v,v=>{
     if(!v.amt){toast('金額を入力してください');return false}
-    const o={id:ex?ex.id:uid(),m:ex?ex.m:cur,type:v.type,item:v.item,amt:+v.amt,acc:v.acc,note:v.note};
+    const ni=(v.newItem||'').trim();if(ni){const L=v.type==='inc'?S.inc:v.type==='exp'?S.exp:S.xi;if(!L.includes(ni))L.push(ni);v.item=ni}
+    const dd=v.d||cur+'-01';const o={id:ex?ex.id:uid(),m:dd.slice(0,7),d:dd,type:v.type,item:v.item,amt:+v.amt,acc:v.acc,note:v.note};
     if(v.type==='xfer'){o.to=v.to;o.asExp=!!v.asExp}
-    if(ex)Object.assign(ex,o);else S.tx.push(o);
+    if(ex)Object.assign(ex,o);else S.tx.push(o);cur=o.m;
   },ex?()=>{S.tx=S.tx.filter(t=>t.id!==id)}:null);
 }
 function editLoan(id){
@@ -248,6 +252,17 @@ function editCard(id){
     if(ex)Object.assign(ex,o);else S.cards.push(o);
   },ex?()=>{if(S.tx.some(t=>t.acc==='c:'+id)){toast('使用中のカードは削除できません');return false}S.cards=S.cards.filter(c=>c.id!==id)}:null);
 }
+const IT={inc:'収入',exp:'支出',xi:'口座振替'};
+function itemsBox(){return Object.keys(IT).map(k=>`<div class="ib" data-k="${k}"><b>${IT[k]}</b><ul class="il">${S[k].map((n,i)=>`<li data-i="${i}"><span class="hd">≡</span><span class="nm">${esc(n)}</span><button class="rm" data-rm="${k}:${i}">×</button></li>`).join('')}</ul><div class="ar"><input data-ni="${k}" placeholder="項目を追加"><button class="addi" data-ai="${k}">追加</button></div></div>`).join('')}
+function refreshItems(){const b=$('#items');if(b)b.innerHTML=itemsBox()}
+let drag=null;
+document.addEventListener('pointerdown',e=>{const h=e.target.closest('.hd');if(!h)return;const li=h.closest('li');drag={li,k:li.closest('.ib').dataset.k};li.classList.add('dg');try{h.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault()});
+document.addEventListener('pointermove',e=>{if(!drag)return;const el=document.elementFromPoint(e.clientX,e.clientY);const t=el&&el.closest('li[data-i]');
+  if(!t||t===drag.li||t.closest('.ib').dataset.k!==drag.k)return;
+  const ul=drag.li.parentNode,r=t.getBoundingClientRect();
+  if(e.clientY<r.top+r.height/2)ul.insertBefore(drag.li,t);else ul.insertBefore(drag.li,t.nextSibling)});
+const endDrag=()=>{if(!drag)return;const k=drag.k;const names=[...drag.li.parentNode.querySelectorAll('li')].map(l=>S[k][+l.dataset.i]);S[k]=names;save();drag=null;refreshItems()};
+document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
 /* ---------- events ---------- */
 document.addEventListener('click',e=>{
   const g=s=>e.target.closest(s);
@@ -257,10 +272,12 @@ document.addEventListener('click',e=>{
   else if(g('#fab'))editEntry();
   else if(el=g('[data-e]'))editEntry(el.dataset.e);
   else if(el=g('[data-l]'))editLoan(el.dataset.l);
+  else if(el=g('[data-rm]')){const p=el.dataset.rm.split(':');S[p[0]].splice(+p[1],1);save();refreshItems()}
+  else if(el=g('[data-ai]')){const k=el.dataset.ai,inp=document.querySelector('[data-ni="'+k+'"]'),n=inp.value.trim();if(n&&!S[k].includes(n)){S[k].push(n);save();refreshItems()}else if(n)toast('すでにあります')}
   else if(el=g('[data-c]'))editCard(el.dataset.c);
   else if(g('#addcard'))editCard();
   else if(g('#addloan'))editLoan();
-  else if(g('#cp')){const pv=mf(mi(cur)-1);S.tx.filter(x=>x.m===pv).forEach(x=>S.tx.push({...x,id:uid(),m:cur}));save();render()}
+  else if(g('#cp')){const pv=mf(mi(cur)-1);S.tx.filter(x=>x.m===pv).forEach(x=>S.tx.push({...x,id:uid(),m:cur,d:cur+'-'+String(Math.min(+(x.d||'0000-00-01').slice(8),new Date(+cur.slice(0,4),+cur.slice(5),0).getDate())).padStart(2,'0')}));save();render()}
   else if(g('#s_save')){
     const names=[...document.querySelectorAll('[data-an]')].map(i=>i.value.trim());
     if(names.some(n=>!n)||new Set(names).size!==names.length){toast('口座名は空欄・重複なしで入力してください');return}
@@ -271,7 +288,7 @@ document.addEventListener('click',e=>{
     S.cards.forEach(c=>{if(c.acc)c.acc=mp[c.acc]||c.acc});S.loans.forEach(l=>{if(l.acc)l.acc=mp[l.acc]||l.acc});
     S.accs=names;S.init=init;
     const sp=id=>$(id).value.split(',').map(s=>s.trim()).filter(Boolean);
-    S.inc=sp('#s_inc');S.exp=sp('#s_exp');S.xi=sp('#s_xi');const ns=$('#s_start').value;if(ns&&ns!==S.start){S.start=ns;cur=ns}
+    const ns=$('#s_start').value;if(ns&&ns!==S.start){S.start=ns;cur=ns}
     
     save();render();toast('保存しました');
   }

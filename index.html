@@ -167,6 +167,7 @@ function list(){
   });
   if(flt!=='inc'){const ls=S.loans.map(l=>({l,q:loanInfo(l,cur)})).filter(x=>x.q.active);
     if(ls.length)h+=`<div class="card"><h4>ローン（自動計上）　${yen(ls.reduce((s,x)=>s+x.q.mo,0))}</h4>`+ls.map(x=>`<div class="row"><span>${esc(x.l.name)}<small>${x.q.paid}／${x.q.n}回</small></span><b>${yen(x.q.mo)}</b></div>`).join('')+'</div>'}
+  if(!flt)h+='<div class="card"><h4>コピー</h4><div class="btns"><button id="cpPrev">前月から当月へ</button><button id="cpNext">当月から次月へ</button></div></div>';
   return h;
 }
 function loans(){
@@ -186,8 +187,8 @@ function settings(){
   
   <label class="fl">開始月<input type="month" id="s_start" value="${S.start}"></label>
   <button class="btn" id="s_save">設定を保存</button><button class="btn" id="shift">明細を開始月に合わせてずらす</button><p class="note">いちばん古い明細の月が開始月になるよう、すべての明細の月をまとめて移動します（ローンの開始月は変わりません）。先に開始月を保存してから押してください。</p></div>
-  <div class="card"><h4>バックアップ</h4><p class="note">データはこの端末のSafariに保存されます。機種変更や履歴削除に備え、定期的にコピーして「メモ」等に保管してください。</p>
-  <textarea id="bk"></textarea><div class="btns"><button id="bk_copy">コピー</button><button id="bk_load" class="pri">貼り付けて復元</button></div>
+  <div class="card"><h4>バックアップ</h4><p class="note">データはこの端末のSafariに保存されます。機種変更や履歴削除に備え、定期的に「ファイルに保存」で「ファイル」アプリ等に保管してください。</p>
+  <button class="btn" id="bk_save">ファイルに保存</button><label class="btn" style="text-align:center">ファイルから読み込む<input type="file" id="bk_file" accept=".json,application/json" hidden></label><p class="note">下の欄は、コピー・貼り付けでの保存と復元に使います。</p><textarea id="bk"></textarea><div class="btns"><button id="bk_copy">コピー</button><button id="bk_load" class="pri">貼り付けて復元</button></div>
   <button class="btn danger" id="clr" style="margin-top:10px">すべての明細・ローンを削除</button><button class="btn danger" id="reset">初期データに戻す</button></div>`;
 }
 function render(){
@@ -208,11 +209,12 @@ function openForm(title,fieldsFn,v,onSave,onDel){
       if(f.t==='sel')return`<label class="fl">${f.l}<select id="${id}">${f.o.map(o=>{const a=Array.isArray(o)?o:[o,o];return`<option value="${esc(a[0])}" ${String(a[0])===String(v[f.k])?'selected':''}>${esc(a[1])}</option>`}).join('')}</select></label>`;
       if(f.t==='chk')return`<label class="fl c"><input type="checkbox" id="${id}" ${v[f.k]?'checked':''}>${f.l}</label>`;
       return`<label class="fl">${f.l}<input id="${id}" type="${f.t}" ${f.t==='number'?'inputmode="numeric"':''} value="${esc(v[f.k]==null?'':v[f.k])}"></label>`;
-    }).join('')+`<div class="btns">${onDel?'<button id="f_del" class="danger">削除</button>':''}<button id="f_cancel">閉じる</button><button id="f_ok" class="pri">保存</button></div>`;
+    }).join('')+`${v.copyFn?'<div class="btns"><button id="f_c0">当月にコピー</button><button id="f_c1">次月にコピー</button></div>':''}<div class="btns">${onDel?'<button id="f_del" class="danger">削除</button>':''}<button id="f_cancel">閉じる</button><button id="f_ok" class="pri">保存</button></div>`;
     const collect=()=>fs.forEach(f=>{const e=$('#f_'+f.k);if(e)v[f.k]=f.t==='chk'?e.checked:f.t==='number'?(e.value===''?'':+e.value):e.value});
     $('#sheet').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{collect();v[b.dataset.k]=b.dataset.v;if(v.onSeg)v.onSeg(v);draw()});
     const it=$('#f_item');if(it&&v.type==='xfer')it.onchange=()=>{const c=$('#f_asExp');if(c)c.checked=it.value!=='引出し'};
     $('#f_cancel').onclick=close;
+    if(v.copyFn){$('#f_c0').onclick=()=>{collect();v.copyFn(0)};$('#f_c1').onclick=()=>{collect();v.copyFn(1)}}
     $('#f_ok').onclick=()=>{collect();if(onSave(v)!==false){save();close();render()}};
     if(onDel)$('#f_del').onclick=e=>arm(e.target,'もう一度押して削除',()=>{if(onDel()===false)return;save();close();render()});
   };
@@ -237,6 +239,7 @@ function editEntry(id){
   const ex=S.tx.find(t=>t.id===id);
   const td=new Date(),ts=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0');
   const v=ex?{...ex,d:ex.d||ex.m+'-01'}:{d:ts.slice(0,7)===cur?ts:cur+'-01',type:'exp',item:'',amt:'',acc:S.accs[2]||S.accs[0],to:S.ext,note:'',asExp:true};
+  if(ex)v.copyFn=off=>{if(!v.amt){toast('金額を入力してください');return}const dd=v.d||cur+'-01',nm=mf(mi(dd.slice(0,7))+off),day=Math.min(+dd.slice(8),new Date(+nm.slice(0,4),+nm.slice(5),0).getDate());const o={id:uid(),m:nm,d:nm+'-'+String(day).padStart(2,'0'),type:v.type,item:v.item,amt:+v.amt,acc:v.acc,note:v.note};if(v.type==='xfer'){o.to=v.to;o.asExp=!!v.asExp}S.tx.push(o);save();close();render();toast(off?'次月にコピーしました':'当月にコピーしました')};
   openForm(ex?'明細を編集':'明細を追加',entryFields,v,v=>{
     if(!v.amt){toast('金額を入力してください');return false}
     const ni=(v.newItem||'').trim();if(ni){const L=v.type==='inc'?S.inc:v.type==='exp'?S.exp:S.xi;if(!L.includes(ni))L.push(ni);v.item=ni}
@@ -277,6 +280,14 @@ const endDrag=()=>{if(!drag)return;const k=drag.k;const names=[...drag.li.parent
 document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
 ['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
 document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
+document.addEventListener('change',e=>{if(e.target.id!=='bk_file')return;const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#bk').value=r.result;toast('読み込みました。「貼り付けて復元」を押すと置き換わります')};r.readAsText(f)});
+async function saveFile(){
+  const txt=JSON.stringify(S),name='kakeibo-'+new Date().toISOString().slice(0,10)+'.json';
+  try{const f=new File([txt],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{const u=URL.createObjectURL(new Blob([txt],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);toast('保存しました')}catch(e){toast('保存できませんでした。下のコピーを使ってください')}
+}
+function copyMonth(a,b){S.tx.filter(x=>x.m===a).forEach(x=>S.tx.push({...x,id:uid(),m:b,d:b+'-'+String(Math.min(+(x.d||'0000-00-01').slice(8),new Date(+b.slice(0,4),+b.slice(5),0).getDate())).padStart(2,'0')}));save();render()}
 /* ---------- events ---------- */
 document.addEventListener('click',e=>{
   const g=s=>e.target.closest(s);
@@ -309,6 +320,9 @@ document.addEventListener('click',e=>{
     save();render();toast('保存しました');
   }
   else if(g('#shift')){const ms=S.tx.map(t=>mi(t.m));if(!ms.length){toast('明細がありません');return}const d=mi(S.start)-Math.min(...ms);if(!d){toast('すでに開始月からです');return}arm(g('#shift'),'もう一度押すと'+(d>0?d+'か月後ろへ':-d+'か月前へ')+'移動',()=>{S.tx.forEach(t=>t.m=mf(mi(t.m)+d));cur=S.start;save();render();toast('移動しました')})}
+  else if(g('#bk_save')){saveFile()}
+  else if(g('#cpNext')){const src=S.tx.filter(x=>x.m===cur);if(!src.length){toast('コピーする明細がありません');return}const nx=mf(mi(cur)+1);arm(g('#cpNext'),'もう一度押すと'+src.length+'件を'+ml(nx)+'へ',()=>{copyMonth(cur,nx);toast(ml(nx)+'へコピーしました')})}
+  else if(g('#cpPrev')){const pv=mf(mi(cur)-1),src=S.tx.filter(x=>x.m===pv);if(!src.length){toast('前月に明細がありません');return}arm(g('#cpPrev'),'もう一度押すと'+src.length+'件を当月へ',()=>{copyMonth(pv,cur);toast('当月へコピーしました')})}
   else if(g('#bk_copy')){const t=$('#bk');t.select();try{navigator.clipboard.writeText(t.value)}catch(x){document.execCommand('copy')}toast('コピーしました')}
   else if(g('#bk_load')){
     let d;try{d=JSON.parse($('#bk').value);if(!d.tx||!d.accs)throw 0}catch(x){toast('データの形式が正しくありません');d=null}

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="資産">
+<meta name="theme-color" content="#0f766e">
+<title>資産管理</title>
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--tx:#14181f;--mu:#6b7280;--ln:#e5e7eb;--ac:#0f766e;--up:#15803d;--dn:#dc2626;--tab:rgba(255,255,255,.94);color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1116;--card:#181c23;--tx:#eef0f3;--mu:#9aa3b0;--ln:#262b34;--ac:#2dd4bf;--up:#4ade80;--dn:#f87171;--tab:rgba(24,28,35,.94)}}
+:root[data-theme="dark"]{--bg:#0e1116;--card:#181c23;--tx:#eef0f3;--mu:#9aa3b0;--ln:#262b34;--ac:#2dd4bf;--up:#4ade80;--dn:#f87171;--tab:rgba(24,28,35,.94)}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;-webkit-text-size-adjust:100%}
+main{padding:12px 12px 92px;max-width:640px;margin:0 auto}
+small{display:block;color:var(--mu);font-size:12px;line-height:1.5}
+small.up,.up{color:var(--up)}small.dn,.dn{color:var(--dn)}
+.card{background:var(--card);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.hero{padding:18px 16px}.hero h1{margin:2px 0;font-size:32px;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ln)}
+.grid>div{background:var(--card);padding:12px 16px}.grid b{font-size:17px;font-variant-numeric:tabular-nums}
+.sec{margin:16px 4px 6px;font-size:13px;color:var(--mu);font-weight:600}
+.row{display:flex;justify-content:space-between;gap:10px;padding:12px 16px;min-height:44px;border-bottom:1px solid var(--ln);cursor:pointer}
+.row:last-child{border-bottom:0}.row.ind{padding-left:30px}.row.gh{background:color-mix(in srgb,var(--ac) 8%,var(--card));cursor:default}
+.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pad{padding:14px 16px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--tab);backdrop-filter:blur(12px);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--mu);font-size:13px;padding:12px 0;min-height:48px}
+nav button.on{color:var(--ac);font-weight:700}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font-size:16px;background:var(--ac);color:var(--bg);margin-top:10px}
+.btn.g{background:var(--ln);color:var(--tx)}
+#m{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:20}
+#m.on{display:flex}
+#sh{max-height:88vh;overflow:auto;background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto}
+label{display:block;font-size:13px;color:var(--mu);margin-top:10px}
+input{width:100%;box-sizing:border-box;font-size:16px;padding:12px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--tx);margin-top:4px}
+</style></head><body>
+<main id="v"></main>
+<nav><button data-t="a">資産</button><button data-t="d">配当</button><button data-t="l">借入</button><button data-t="p">携帯</button><button data-t="s">設定</button></nav>
+<input type="file" id="rf" accept=".json,application/json" hidden><div id="m"><div id="sh"><b id="mt"></b><div id="mf"></div><button class="btn" id="ok">保存</button><button class="btn g" id="no">キャンセル</button></div></div>
+<script>
+var KEY="asset_v1";
+var DEF={rate:109.62,rate0:110.98,limit:4800000,
+loans:[{n:"BANQUICK",e:4642042,f:4642042}],
+items:[
+{id:"ins",n:"保険（豪ドル）",aud:1,d:19661.16,e:12873,f:12999,ey:1411138.26,note:"62歳まで引出し不可"},
+{id:"dc",n:"DC年金",d:1951402,e:2928274,f:2739182,note:"62歳まで引出し不可"},
+{id:"n1",g:"nikko",n:"（内：預かり）",d:0,e:6157,f:6166},
+{id:"n2",g:"nikko",n:"（内：ヤマウラ）",d:93842,e:147600,f:149500,note:"長期投資(100株)",v:[1316,1036,1355]},
+{id:"n3",g:"nikko",n:"→ミニ株",d:6494,e:9585,f:9709,v:[86,68,89]},
+{id:"n4",g:"nikko",n:"（内：トヨタ）",d:5941.447231,e:7039,f:7531,v:[91,82,91]},
+{id:"n5",g:"nikko",n:"（内：富士通）",d:800.003391,e:2291,f:1726,v:[6,6,16]},
+{id:"n6",g:"nikko",n:"（内：リロG）",d:4000.014268,e:5695,f:5399,v:[0,0,128]},
+{id:"n7",g:"nikko",n:"（内：G-ZETA）",d:3999.99834,e:2808,f:2580,v:[33,0,37]},
+{id:"n8",g:"nikko",n:"（内：パピレス）",d:1900.0032128,e:1184,f:1118,v:[10,10,10]},
+{id:"n9",g:"nikko",n:"（内：THEO）",d:110000,e:110595,f:119928},
+{id:"n10",g:"nikko",n:"（内：NISA）",d:0,e:0,f:0,note:"皆の車積み立て"},
+{id:"n11",g:"nikko",n:"ソニーFG",d:31774,e:30160,f:28440,note:"短期投資(200株)",v:[0,0,760]},
+{id:"n12",g:"nikko",n:"コシダカHD",d:115347,e:94300,f:96100,note:"短期投資(100株)",v:[2869,3900,3108]},
+{id:"u1",g:"ufj",n:"第一屋製パン",d:71487,e:72540,f:72657},
+{id:"u2",g:"ufj",n:"ソフトバンク",d:43584,e:39396,f:46963},
+{id:"u3",g:"ufj",n:"オリオン",d:41958,e:31468,f:41410},
+{id:"u4",g:"ufj",n:"エンビブロ",d:3755,e:3380,f:2885},
+{id:"u5",g:"ufj",n:"（外：預かり）",d:447,e:1922,f:1570},
+{id:"sora",n:"SORA預金",d:0,e:0,f:0,note:"2026/9/3 (600,000円)"},
+{id:"c1",x:1,n:"車預金（セイヤ）",d:330000,e:330000,f:330000,note:"NISA=2, THEO=1"},
+{id:"c2",x:1,n:"車預金（ソラ）",d:14000,e:14000,f:14000,note:"NISA=1"}
+]};
+var GN={nikko:"日興證券",ufj:"三菱UFJ"};
+var PH=[["iPhone 14 (128G)","midnight blue","2026-04-01",2,"au","未使用","2026/4/5 16:30 返却"],["iPhone 14 (128G)","白","2026-06-01",1,"softbank","未使用","6/7 手続き"],["iPhone 15 (128G)","白","2026-12-01",1,"docomo","未使用",""],["iPhone 16 (128G)","白","2027-10-01",1,"docomo","そら",""],["iPhone 17e (256G)","白","2028-06-01",0,"ymobile","まま",""]];
+var S=null,tab="a";
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.items)S=JSON.parse(JSON.stringify(DEF));
+var SH={n2:100,n11:200,n12:100,u1:117,u2:192,u3:41,u4:5};
+function mig(){if(!S.ph)S.ph=PH.map(function(a){return{m:a[0],c:a[1],d:a[2],f:a[3],k:a[4],u:a[5],n:a[6],x:0}});S.items=S.items.filter(function(i){return["sora","c1","c2"].indexOf(i.id)<0});S.items.forEach(function(i){if(i.s===undefined){i.s=SH[i.id]||0;i.p=i.s?i.f/i.s:0}})}
+mig();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function $(s){return document.querySelector(s)}
+function F(n){return(Math.round(n)||0).toLocaleString("ja-JP")}
+function sg(n){var r=Math.round(n)||0;return(r>0?"+":r<0?"−":"")+Math.abs(r).toLocaleString("ja-JP")}
+function cl(n){n=Math.round(n)||0;return n>0?"up":n<0?"dn":""}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+function Y(i){return i.aud?{d:i.d*S.rate0,e:i.ey,f:i.f*S.rate}:{d:i.d,e:i.e,f:i.f}}
+function calc(){var t={d:0,e:0,f:0},L={e:0,f:0};
+S.items.forEach(function(i){if(i.x)return;var y=Y(i);t.d+=y.d;t.e+=y.e;t.f+=y.f});
+S.loans.forEach(function(l){L.e+=l.e;L.f+=l.f});return{t:t,L:L}}
+function row(i,ind){var y=Y(i),g=y.f-y.e,h=y.f-y.d,dv="";
+
+var sub=[i.aud?F(i.f)+" 豪ドル":"",i.s?F(i.s)+"株 × "+(Math.round(i.p*100)/100).toLocaleString("ja-JP"):"",i.note||"",dv].filter(Boolean).join(" ／ ");
+return '<div class="row'+(ind?" ind":"")+'" data-id="'+i.id+'"><div><b>'+esc(i.n)+'</b>'+(sub?"<small>"+esc(sub)+"</small>":"")+'</div><div class="r"><b>'+F(y.f)+'</b><small class="'+cl(g)+'">前回差 '+sg(g)+'</small><small class="'+cl(h)+'">元金差 '+sg(h)+'</small></div></div>'}
+function grp(k){var its=S.items.filter(function(i){return i.g===k}),a={d:0,e:0,f:0};
+its.forEach(function(i){a.d+=i.d;a.e+=i.e;a.f+=i.f});
+return '<div class="card"><div class="row gh"><div><b>'+GN[k]+'</b></div><div class="r"><b>'+F(a.f)+'</b><small class="'+cl(a.f-a.e)+'">前回差 '+sg(a.f-a.e)+'</small><small class="'+cl(a.f-a.d)+'">元金差 '+sg(a.f-a.d)+'</small></div></div>'+its.map(function(i){return row(i,1)}).join("")+"</div>"}
+function assets(){var c=calc(),t=c.t,L=c.L,tot=t.f-L.f,pv=t.e-L.e;
+
+var top=S.items.filter(function(i){return!i.g});
+return '<div class="card"><div class="hero"><small>総資産（資産 − 借入）</small><h1>¥'+F(tot)+'</h1><small class="'+cl(tot-pv)+'">前回比 '+sg(tot-pv)+'</small></div><div class="grid"><div><small>資産計</small><b>'+F(t.f)+'</b></div><div><small>借入計</small><b>'+F(L.f)+'</b></div><div><small>前回差</small><b class="'+cl(t.f-t.e)+'">'+sg(t.f-t.e)+'</b></div><div><small>元金差</small><b class="'+cl(t.f-t.d)+'">'+sg(t.f-t.d)+'</b></div></div></div>'
++'<button class="btn g" data-act="px" style="margin:0 0 4px">株価をまとめて更新</button><div class="sec">預け入れ（タップで編集）</div><div class="card">'+top.map(function(i){return row(i)}).join("")+"</div>"
++grp("nikko")+grp("ufj")
+
+
+}
+function loans(){return '<div class="sec">借入</div>'+S.loans.map(function(l,k){var r=S.limit-l.f;
+return '<div class="card"><div class="row" data-loan="'+k+'"><div><b>'+esc(l.n)+'</b><small>残り枠 '+F(r)+' ／ 上限 '+F(S.limit)+'</small></div><div class="r"><b>'+F(l.f)+'</b><small class="'+cl(-(l.f-l.e))+'">前回差 '+sg(l.f-l.e)+'</small><small>前回 '+F(l.e)+'</small></div></div></div>'}).join("")}
+var CY=new Date().getFullYear(),dy=Math.max(2025,CY),showEnd=false;
+function dg(i,y,h){return((i.v||[])[(y-2025)*2+h])||0}
+function nd(s){var m=String(s).normalize("NFKC").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);return m?m[1]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[3]).slice(-2):""}
+function divs(){var its=S.items.filter(function(i){return!i.aud&&i.id!=="dc"}),a=0,b=0,ys="";
+its.forEach(function(i){a+=dg(i,dy,0);b+=dg(i,dy,1)});
+for(var y=2025;y<=Math.max(CY+1,dy);y++){var t=0;its.forEach(function(i){t+=dg(i,y,0)+dg(i,y,1)});ys+='<div class="row" data-y="'+y+'"><div><b>'+y+'年'+(y===dy?' ✓':'')+'</b></div><div class="r"><b>'+F(t)+'</b></div></div>'}
+return '<div class="sec">配当金</div><div class="card"><div class="row" style="cursor:default;align-items:center"><button class="btn g" data-act="dyp" style="margin:0;width:56px">◀</button><b style="font-size:18px">'+dy+'年</b><button class="btn g" data-act="dyn" style="margin:0;width:56px">▶</button></div><div class="grid"><div><small>上期</small><b>'+F(a)+'</b></div><div><small>下期</small><b>'+F(b)+'</b></div></div><div class="pad"><small>年間合計</small><b style="font-size:22px">¥'+F(a+b)+'</b></div></div><div class="sec">銘柄ごと（タップで入力）</div><div class="card">'+its.map(function(i){var p=dg(i,dy,0),q=dg(i,dy,1);return'<div class="row" data-dv="'+i.id+'"><div><b>'+esc(i.n)+'</b></div><div class="r"><small>上期 '+(p?F(p):"—")+'</small><small>下期 '+(q?F(q):"—")+'</small></div></div>'}).join("")+'</div><div class="sec">年別合計（タップでその年を表示）</div><div class="card">'+ys+'</div>'}
+function phones(){var now=new Date(),n=0,h='<div class="sec">携帯管理</div><button class="btn" data-act="phadd" style="margin:0 0 12px">＋ 携帯を追加</button>';
+S.ph.forEach(function(p,k){if(p.x){n++;if(!showEnd)return}var d=Math.ceil((new Date(p.d)-now)/864e5);
+h+='<div class="card" style="'+(p.x?'opacity:.55':'')+'"><div class="row" data-ph="'+k+'"><div><b>'+esc(p.m)+'</b><small>'+esc([p.c,p.k,p.u?"使用者: "+p.u:""].filter(Boolean).join(" ／ "))+'</small>'+(p.n?'<small>'+esc(p.n)+'</small>':'')+'</div><div class="r"><b>'+esc(String(p.d||"").replace(/-/g,"/"))+'</b><small class="'+(!p.x&&d<0?'dn':'')+'">'+(p.x?"終了":(!p.d||isNaN(d))?"":d<0?"期限切れ":"あと "+d+" 日")+'</small>'+(p.f?'<small>利用料 '+F(p.f)+'</small>':'')+'</div></div></div>'});
+if(n)h+='<button class="btn g" data-act="phsh">'+(showEnd?"終了分を隠す":"終了分を表示（"+n+"件）")+'</button>';
+return h}
+function phEdit(k){var p=k==null?{m:"",c:"",d:"",f:0,k:"",u:"",n:"",x:0}:S.ph[k];
+edit(k==null?"携帯を追加":p.m,[{l:"機種",v:p.m,t:1},{l:"色",v:p.c,t:1},{l:"使用期限（例 2027-04-01）",v:p.d,t:1},{l:"利用料",v:p.f},{l:"キャリア",v:p.k,t:1},{l:"使用者",v:p.u,t:1},{l:"備考",v:p.n,t:1},{l:"終了済み（1にすると非表示）",v:p.x?1:0}],function(r){p.m=r[0];p.c=r[1];p.d=nd(r[2]);p.f=r[3];p.k=r[4];p.u=r[5];p.n=r[6];p.x=r[7]?1:0;if(k==null)S.ph.push(p)})}
+function backup(){var js=JSON.stringify(S,null,1),d=new Date(),fn="asset-backup-"+d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2)+".json";
+var fb=function(){edit("バックアップ（全選択してコピー）",[{l:"内容",v:js,t:1}],function(){})};
+if(!(window.claude&&claude.use))return fb();
+claude.use("downloads").then(function(dl){if(!dl)return fb();return dl.save({filename:fn,data:js}).catch(function(e){if(!e||e.code!=="declined")fb()})},fb)}
+$("#rf").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var o=JSON.parse(r.result);if(!o.items||!o.loans)throw 0;if(confirm("現在のデータをバックアップの内容で置き換えます。よろしいですか？")){S=o;mig();save();render()}}catch(x){alert("バックアップファイルを読み込めませんでした。")}$("#rf").value=""};r.readAsText(f)};
+function phonesOld(){var now=new Date();return '<div class="sec">携帯管理</div>'+PH.map(function(p){var d=Math.ceil((new Date(p[2])-now)/864e5);
+return '<div class="card"><div class="row" style="cursor:default"><div><b>'+p[0]+'</b><small>'+p[1]+" ／ "+p[4]+" ／ 使用者: "+p[5]+'</small>'+(p[6]?"<small>"+p[6]+"</small>":"")+'</div><div class="r"><b>'+p[2].replace(/-/g,"/")+'</b><small class="'+(d<0?"dn":"")+'">'+(d<0?"期限切れ":"あと "+d+" 日")+'</small>'+(p[3]?"<small>利用料 "+p[3]+"</small>":"")+"</div></div></div>"}).join("")}
+function sett(){return '<div class="sec">設定</div><div class="card"><div class="row" data-act="px"><div><b>株価をまとめて更新</b><small>株数が登録された銘柄</small></div><div class="r"><b>›</b></div></div><div class="row" data-act="rate"><div><b>為替レート（現在）</b><small>豪ドル → 円</small></div><div class="r"><b>'+S.rate+'</b></div></div><div class="row" data-act="rate0"><div><b>為替レート（元金計算用）</b></div><div class="r"><b>'+S.rate0+'</b></div></div><div class="row" data-act="limit"><div><b>借入上限</b></div><div class="r"><b>'+F(S.limit)+'</b></div></div></div>'
++'<button class="btn g" data-act="bk">バックアップを保存</button><button class="btn g" data-act="rs">バックアップから復元</button>'+'<button class="btn" data-act="roll">月次更新（今回の金額を「前回」に確定）</button><button class="btn g" data-act="reset">初期データに戻す</button>'
++'<small style="margin-top:14px">データはこの端末のブラウザ内に保存されます。Safariのサイトデータを消去すると失われます。定期的にバックアップを保存してください。</small>'}
+function render(){$("#v").innerHTML=tab==="a"?assets():tab==="d"?divs():tab==="l"?loans():tab==="p"?phones():sett();
+document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.t===tab)})}
+function edit(title,fs,ok){$("#mt").textContent=title;
+$("#mf").innerHTML=fs.map(function(f,k){return '<label>'+f.l+'<input id="f'+k+'"'+(f.t?"":' inputmode="decimal"')+' value="'+esc(f.v)+'"></label>'}).join("");
+$("#m").classList.add("on");
+$("#ok").onclick=function(){ok(fs.map(function(f,k){var v=$("#f"+k).value;return f.t?v:(parseFloat(v.normalize("NFKC").replace(/[,\s]/g,""))||0)}));save();$("#m").classList.remove("on");render()}}
+$("#no").onclick=function(){$("#m").classList.remove("on")};
+document.querySelector("nav").onclick=function(e){var t=e.target.dataset.t;if(t){tab=t;render();window.scrollTo(0,0)}};
+$("#v").onclick=function(e){var el=e.target.closest("[data-id],[data-loan],[data-act],[data-dv],[data-y],[data-ph]");if(!el)return;
+if(el.dataset.id){var i=S.items.filter(function(x){return x.id===el.dataset.id})[0],u=i.aud?" (豪ドル)":"";
+if(i.aud)edit(i.n,[{l:"現在の金額"+u,v:i.f},{l:"前回の金額"+u,v:i.e},{l:"元金"+u,v:i.d},{l:"メモ",v:i.note||"",t:1}],function(r){i.f=r[0];i.e=r[1];i.d=r[2];i.note=r[3];i.ey=r[1]*S.rate});
+else edit(i.n,[{l:"株数（0なら金額を直接入力）",v:i.s||0},{l:"株価（1株あたり）",v:Math.round((i.p||0)*100)/100},{l:"現在の金額（株数が0のとき）",v:i.f},{l:"前回の金額",v:i.e},{l:"元金",v:i.d},{l:"メモ",v:i.note||"",t:1}],function(r){i.s=r[0];i.p=r[1];i.f=(r[0]>0&&r[1]>0)?r[0]*r[1]:r[2];i.e=r[3];i.d=r[4];i.note=r[5]})}
+else if(el.dataset.dv){var it=S.items.filter(function(x){return x.id===el.dataset.dv})[0],ix=(dy-2025)*2;edit(it.n+" "+dy+"年",[{l:"上期",v:dg(it,dy,0)},{l:"下期",v:dg(it,dy,1)}],function(r){it.v=it.v||[];while(it.v.length<ix+2)it.v.push(0);it.v[ix]=r[0];it.v[ix+1]=r[1]})}
+else if(el.dataset.y){dy=+el.dataset.y;render()}
+else if(el.dataset.ph){phEdit(+el.dataset.ph)}
+else if(el.dataset.loan){var l=S.loans[+el.dataset.loan];edit(l.n,[{l:"現在の金額",v:l.f},{l:"前回の金額",v:l.e}],function(r){l.f=r[0];l.e=r[1]})}
+else{var a=el.dataset.act;
+if(a==="dyp"){dy=Math.max(2025,dy-1);render()}
+if(a==="dyn"){dy=Math.min(CY+1,dy+1);render()}
+if(a==="phadd")phEdit(null);
+if(a==="phsh"){showEnd=!showEnd;render()}
+if(a==="bk")backup();
+if(a==="rs")$("#rf").click();
+if(a==="px"){var ps=S.items.filter(function(x){return x.s>0});edit("株価をまとめて更新",ps.map(function(x){return{l:x.n+"（"+F(x.s)+"株）",v:Math.round(x.p*100)/100}}),function(r){ps.forEach(function(x,k){if(r[k]>0){x.p=r[k];x.f=x.s*r[k]}})})}
+if(a==="rate")edit("為替レート（現在）",[{l:"円 / 豪ドル",v:S.rate}],function(r){S.rate=r[0]||S.rate});
+if(a==="rate0")edit("為替レート（元金計算用）",[{l:"円 / 豪ドル",v:S.rate0}],function(r){S.rate0=r[0]||S.rate0});
+if(a==="limit")edit("借入上限",[{l:"円",v:S.limit}],function(r){S.limit=r[0]});
+if(a==="roll"&&confirm("今回の金額を「前回」にコピーします。よろしいですか？")){S.items.forEach(function(i){i.e=i.f;if(i.aud)i.ey=i.f*S.rate});S.loans.forEach(function(l){l.e=l.f});save();tab="a";render();window.scrollTo(0,0)}
+if(a==="reset"&&confirm("入力した内容をすべて初期データに戻します。よろしいですか？")){S=JSON.parse(JSON.stringify(DEF));mig();save();render()}}};
+render();
+</script></body></html>

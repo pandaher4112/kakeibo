@@ -97,7 +97,7 @@ function route(){const id=location.hash.slice(1),ok=!!DOC[id];
  for(const k in frames)frames[k].style.display=k===id?'block':'none';
  $('load').style.display=frames[id].dataset.ready?'none':'grid'}
 let TH='light';try{TH=localStorage.getItem('pouch-theme')||'light'}catch(e){}
-function tf(f){try{const d=f.contentDocument;if(!d.getElementById('pouch-fix')){const s=d.createElement('style');s.id='pouch-fix';s.textContent='*{touch-action:manipulation;-webkit-tap-highlight-color:transparent}';d.head.appendChild(s)}const r=d.documentElement;TH==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',TH)}catch(e){}}
+function tf(f){try{const d=f.contentDocument;if(!d.getElementById('pouch-fix')){const s=d.createElement('style');s.id='pouch-fix';s.textContent='*{touch-action:manipulation;-webkit-tap-highlight-color:transparent}nav button,.tabs button{position:relative}nav button::after,.tabs button::after{content:"";position:absolute;left:-2px;right:-2px;top:-16px;bottom:-36px}';d.head.appendChild(s)}const r=d.documentElement;TH==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',TH)}catch(e){}}
 function applyTheme(){const r=document.documentElement;TH==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',TH);
  $('th').textContent=TH==='light'?'☀️':TH==='dark'?'🌙':'🌗';$('th').title=TH==='light'?'明るい':TH==='dark'?'ダーク':'自動';for(const k in frames)tf(frames[k])}
 $('th').onclick=()=>{TH=TH==='light'?'dark':TH==='dark'?'auto':'light';try{localStorage.setItem('pouch-theme',TH)}catch(e){}applyTheme()};
